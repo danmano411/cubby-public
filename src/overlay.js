@@ -218,17 +218,18 @@ $filter.addEventListener('input', () => {
 document.getElementById('backdrop').onclick = () => cubby.send('hide');
 
 document.getElementById('open-all').onclick = () => cubby.send('open-all');
-// Kill All needs a second click within 3s.
-const $kill = document.getElementById('kill-all');
-let killTimer;
-$kill.onclick = () => {
-  if ($kill.classList.contains('armed')) { disarm(); cubby.send('kill-all'); return; }
+// Close All needs a second click within 3s.
+const $close = document.getElementById('close-all');
+let closeTimer;
+const closeLabel = () => model?.labels?.closeAll || 'Close all';
+$close.onclick = () => {
+  if ($close.classList.contains('armed')) { disarm(); cubby.send('close-all'); return; }
   const n = model.groups.filter((g) => g.id !== 'other').flatMap((g) => g.apps).concat(model.music || []).filter((a) => a.running).length;
-  $kill.querySelector('.label').textContent = `Kill ${n} apps?`;
-  $kill.classList.add('armed');
-  killTimer = setTimeout(disarm, 3000);
+  $close.querySelector('.label').textContent = `${model?.labels?.closeVerb || 'Close'} ${n} apps?`;
+  $close.classList.add('armed');
+  closeTimer = setTimeout(disarm, 3000);
 };
-function disarm() { clearTimeout(killTimer); $kill.classList.remove('armed'); $kill.querySelector('.label').textContent = 'Kill all'; }
+function disarm() { clearTimeout(closeTimer); $close.classList.remove('armed'); $close.querySelector('.label').textContent = closeLabel(); }
 for (const b of document.querySelectorAll('#modes button')) {
   b.onclick = () => { cubby.send('social-mode', b.dataset.mode); setTimeout(() => $filter.focus(), 0); };
 }
@@ -278,7 +279,8 @@ function setHints(alt) {
   $filter.placeholder = alt ? `Let go of ${mod} to switch` : 'Type to jump…';
   const v = model.voice;
   document.getElementById('open-all').title = `Launch every app in your groups that isn't open${v ? ` (voice: "${v.openAll}")` : ''}`;
-  document.getElementById('kill-all').title = `Close every app in your groups, click twice${v ? ` (voice: "${v.killAll}")` : ''}`;
+  document.getElementById('close-all').title = `Close every app in your groups, click twice${v ? ` (voice: "${v.closeAll}")` : ''}`;
+  if (!$close.classList.contains('armed')) $close.querySelector('.label').textContent = closeLabel();
 }
 cubby.on('model', (m) => { model = { ...m, foreground }; if (rendersHeld()) pendingRender = true; else render(); });
 cubby.on('cycle', (d) => cycle(d));

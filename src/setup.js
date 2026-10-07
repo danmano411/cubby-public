@@ -45,7 +45,7 @@ const S = {
   draft: null, base: '', firstRun: false, autofill: false,
   displays: [], providers: [], catalog: [], defaults: null,
   cands: null, icons: {}, query: '', target: null, drag: null, redrawLater: false,
-  rec: null, recNote: '', errors: [], saving: false, savedAt: 0, perms: {}, vt: { wake: '', open: '', kill: '' },
+  rec: null, recNote: '', errors: [], saving: false, savedAt: 0, perms: {}, vt: { wake: '', open: '', close: '' },
 };
 
 function el(tag, attrs, ...kids) {
@@ -479,14 +479,14 @@ function voiceProblems() {
   const p = {};
   if (!cleanPhrase(S.vt.wake)) p.wake = 'Pick a wake word.';
   if (!splitPhrases(S.vt.open).length) p.open = 'Add at least one phrase.';
-  if (!splitPhrases(S.vt.kill).length) p.kill = 'Add at least one phrase.';
+  if (!splitPhrases(S.vt.close).length) p.close = 'Add at least one phrase.';
   return p;
 }
 function syncVoice() {
   const v = S.draft.voice;
   v.wakeWord = cleanPhrase(S.vt.wake) || v.wakeWord;
   if (splitPhrases(S.vt.open).length) v.commands.openAll = splitPhrases(S.vt.open);
-  if (splitPhrases(S.vt.kill).length) v.commands.killAll = splitPhrases(S.vt.kill);
+  if (splitPhrases(S.vt.close).length) v.commands.closeAll = splitPhrases(S.vt.close);
 }
 function startupPage() {
   const v = S.draft.voice;
@@ -506,16 +506,19 @@ function startupPage() {
     out.push(el('div', { class: 'fields' },
       field('wake', 'Wake word', 'Say this first. Pick something you do not say in normal conversation.'),
       field('open', 'Open all apps', 'Separate several phrases with commas.'),
-      field('kill', 'Close all apps', 'This closes every app in your groups, so use a phrase that is hard to say by accident.')));
+      field('close', 'Close all apps', 'This closes every app in your groups, so use a phrase that is hard to say by accident.')));
     out.push(el('div', { class: 'say', id: 'say' }, ...sayNodes()));
     out.push(el('p', { class: 'note faint' }, 'Letters, numbers and spaces only. Cubby needs microphone access while voice is on.'));
   }
+  out.push(el('h3', null, 'Close all'));
+  out.push(el('div', { class: 'field' }, el('label', null, 'Button label'), el('input', { type: 'text', value: S.draft.labels?.closeAll || '', placeholder: 'Close all', spellcheck: 'false', 'aria-label': 'Button label',
+    oninput: (e) => { const t = e.target.value.trim(); S.draft.labels = { ...S.draft.labels, closeAll: t || 'Close all' }; renderFoot(); } }), el('div', { class: 'note', style: 'margin-top:3px' }, 'Optional. The first word is used in the confirm text, like "Close 5 apps?".')));
   return out;
 }
 function sayNodes() {
   const w = cleanPhrase(S.vt.wake) || '…';
   const o = splitPhrases(S.vt.open)[0] || '…';
-  const k = splitPhrases(S.vt.kill)[0] || '…';
+  const k = splitPhrases(S.vt.close)[0] || '…';
   return ['Try saying ', el('b', null, `"${w} ${o}"`), ' or ', el('b', null, `"${w} ${k}"`), '.'];
 }
 
@@ -648,7 +651,7 @@ cubby.on('setup:init', (d) => {
   syncTakeOver();
   S.base = JSON.stringify(S.draft);
   const v = S.draft.voice;
-  S.vt = { wake: v.wakeWord, open: v.commands.openAll.join(', '), kill: v.commands.killAll.join(', ') };
+  S.vt = { wake: v.wakeWord, open: v.commands.openAll.join(', '), close: v.commands.closeAll.join(', ') };
   S.target = S.draft.groups[0]?.id || null;
   S.step = 0;
   S.seen = 0;

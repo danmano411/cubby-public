@@ -82,8 +82,8 @@ const keyLabels = () => Object.fromEntries(schema.KEY_NAMES.map((k) => [k, schem
 function voiceHints() {
   const v = config.voice;
   if (!v.enabled) return null;
-  const [open, kill] = [v.commands.openAll[0], v.commands.killAll[0]];
-  return { wake: v.wakeWord, openAll: `${v.wakeWord} ${open}`, killAll: `${v.wakeWord} ${kill}`, followUp: `say “${open}” or “${kill}”` };
+  const [open, close] = [v.commands.openAll[0], v.commands.closeAll[0]];
+  return { wake: v.wakeWord, openAll: `${v.wakeWord} ${open}`, closeAll: `${v.wakeWord} ${close}`, followUp: `say “${open}” or “${close}”` };
 }
 
 function snapshot() {
@@ -97,7 +97,7 @@ function snapshot() {
     else if (t) wantIcon(t);
   }
   const tints = Object.fromEntries(allApps(rc).filter((a) => a.tint).map((a) => [a.id, a.tint]));
-  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, keys: keyLabels(), voice: voiceHints() };
+  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) } };
 }
 
 // Icons come from the platform (shell-rendered on Windows), keyed by launch target, so closed and
@@ -227,17 +227,17 @@ function activate(hwnd) {
   hideOverlay();
 }
 
-// ---- Open All / Kill All (panel buttons + voice) ------------------------------
+// ---- Open All / Close All (panel buttons + voice) ------------------------------
 
 function openAll() {
   log('open-all', session.openAll(runtime(), adapter.launch));
   hideOverlay();
 }
 
-async function killAll() {
+async function closeAll() {
   hideOverlay();
-  const r = await session.killAll(runtime());
-  log('kill-all', r);
+  const r = await session.closeAll(runtime());
+  log('close-all', r);
   if (r.waiting.length) notify({ id: 'cubby', headline: 'Still open', title: `${r.waiting.join(', ')}: probably asking to save` });
   push();
 }
@@ -245,7 +245,7 @@ async function killAll() {
 // ---- Voice: offline recognizer from the platform (config.voice) --------------------
 // The wake word alone opens a 5s listening window (logo cue mid-screen); a command phrase then
 // runs it. "<wake> <command>" works in one go. Each command has its own confidence threshold:
-// kill is higher than open, since a misfire there closes everything. A false wake only shows the cue.
+// close is higher than open, since a misfire there closes everything. A false wake only shows the cue.
 const WAKE_MS = 5000;
 let stopVoiceProc = null;
 let voice = null;
@@ -256,7 +256,7 @@ function voiceTable() {
   const v = config.voice;
   const norm = (s) => s.trim().toLowerCase();
   const wake = norm(v.wakeWord);
-  const cmds = { openAll: { label: 'Opening all apps', run: openAll }, killAll: { label: 'Killing all apps', run: killAll, danger: true } };
+  const cmds = { openAll: { label: 'Opening all apps', run: openAll }, closeAll: { label: `${schema.verbIng(schema.closeVerb(config.labels.closeAll))} all apps`, run: closeAll, danger: true } };
   const full = {};
   const followUp = {}; // only inside the wake window
   for (const [k, c] of Object.entries(cmds)) {
@@ -544,7 +544,7 @@ function buildTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: L('search') ? `Search apps  (${L('search')})` : 'Search apps', click: () => showOverlay() },
     ...(L('switch') ? [{ label: `Replace ${L('switch')}`, type: 'checkbox', checked: !!config.keys.takeOverSystemSwitcher, click: (i) => setTakeOver(i.checked) }] : []),
-    { label: `Voice commands (${say(v.commands.openAll[0])}, ${say(v.commands.killAll[0])})`, type: 'checkbox', checked: !!v.enabled, click: (i) => setVoice(i.checked) },
+    { label: `Voice commands (${say(v.commands.openAll[0])}, ${say(v.commands.closeAll[0])})`, type: 'checkbox', checked: !!v.enabled, click: (i) => setVoice(i.checked) },
     { label: process.platform === 'darwin' ? 'Open at login' : 'Start with Windows', type: 'checkbox', checked: !!config.startAtLogin, click: (i) => setStartAtLogin(i.checked) },
     { type: 'separator' },
     ...Object.entries(MODES).map(([k, label]) => ({ label: `Socials: ${label}`, type: 'radio', checked: config.socialMode === k, click: () => setSocialMode(k) })),
@@ -611,7 +611,7 @@ async function smoke() {
     }
     provider = music.get(config.music.provider, adapter);
     toast.webContents.send('toast', { id: 'cubby', headline: 'Smoke test', title: 'ok' });
-    cue.webContents.send('cue', { mode: 'listening', hint: 'say “start” or “kill force”' });
+    cue.webContents.send('cue', { mode: 'listening', hint: `say “${config.voice.commands.openAll[0]}” or “${config.voice.commands.closeAll[0]}”` });
   } catch (e) { fail(`snapshot: ${e.stack}`); }
 
   // Starting to drag an app must not move any column, or the drop lands on whatever slid under the
@@ -745,7 +745,7 @@ app.whenReady().then(() => {
   ipcMain.on('hide', dismiss);
   ipcMain.on('open-tray', () => showOverlay());
   ipcMain.on('open-all', openAll);
-  ipcMain.on('kill-all', killAll);
+  ipcMain.on('close-all', closeAll);
   ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) adapter.focus(hwnd); });
   ipcMain.on('toast-close', () => toast.hide());
 

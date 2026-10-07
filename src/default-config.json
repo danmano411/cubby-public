@@ -14,8 +14,8 @@
   "music": { "provider": "spotify" },
   "voice": {
     "enabled": false, "engine": "builtin", "wakeWord": "cubby",
-    "commands": { "openAll": ["start"], "killAll": ["kill force"] },
-    "thresholds": { "wake": 0.6, "openAll": 0.75, "killAll": 0.8 }
+    "commands": { "openAll": ["start"], "closeAll": ["close everything"] },
+    "thresholds": { "wake": 0.6, "openAll": 0.75, "closeAll": 0.8 }
   },
   "apps": {}
 }

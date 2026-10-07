@@ -16,7 +16,7 @@
 ---
 
 <p align="center">
-  <img src="assets/tray.svg" alt="Illustration of the Cubby tray: four groups of apps with open apps lit and closed apps dimmed, a search box, a music strip, and Open All and Kill All buttons" width="720">
+  <img src="assets/tray.svg" alt="Illustration of the Cubby tray: four groups of apps with open apps lit and closed apps dimmed, a search box, a music strip, and Open All and Close All buttons" width="720">
 </p>
 <p align="center"><sub>An illustration with made-up apps, not a screenshot.</sub></p>
 
@@ -64,9 +64,9 @@ It stays out of the way until you press the key, and it is built to be set up by
 
 **Music strip and keys.** A strip shows what is playing, with previous, play/pause and next, and clicking the track jumps to the player. `Alt+[`, `Alt+\` and `Alt+]` control playback from anywhere. Players: Spotify; on Windows also **System media** (whatever is playing, browser tabs included); on macOS also Apple Music. Set the provider to `none` and the strip, panel and keys go away.
 
-**Open All / Kill All.** Open All launches every app in your groups. Kill All closes them, asking each app to close politely first, and tells you which ones are probably waiting on a "save changes?" dialog. It needs a second click within three seconds so it cannot happen by accident.
+**Open All / Close All.** Open All launches every app in your groups. Close All closes them, asking each app to close politely first, and tells you which ones are probably waiting on a "save changes?" dialog. It needs a second click within three seconds so it cannot happen by accident.
 
-**Voice (optional, off by default).** Say the wake word ("Cubby") and then "start" to open everything, or "kill force" to close everything. Recognition runs on your machine with the speech engine your OS already has. Kill needs higher confidence than open, since a mistake there costs more. Turn it on from the tray menu or in Settings, where you can also change the wake word and phrases.
+**Voice (optional, off by default).** Say the wake word ("Cubby") and then "start" to open everything, or "close everything" to close your apps. Recognition runs on your machine with the speech engine your OS already has. Close needs higher confidence than open, since a mistake there costs more. Turn it on from the tray menu or in Settings, where you can also change the wake word and phrases.
 
 **Setup wizard.** On first launch Cubby walks you through your keys, starter groups, which of your installed apps go where, your music player, and starting at login. It is also available later from the tray menu.
 
@@ -159,7 +159,7 @@ Most of it can be changed in **Settings…** in the tray menu. For the rest, the
     { "id": "work", "name": "Work", "apps": ["vscode"] }
   ],
   "music": { "provider": "spotify" },      // or "none"
-  "voice": { "enabled": false, "wakeWord": "cubby", "commands": { "openAll": ["start"], "killAll": ["kill force"] } },
+  "voice": { "enabled": false, "wakeWord": "cubby", "commands": { "openAll": ["start"], "closeAll": ["close everything"] } },
   "apps": {}                                // per-app overrides
 }
 ```

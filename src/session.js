@@ -1,4 +1,4 @@
-// Open All / Kill All for the configured apps (groups + music). "Other" windows are never touched.
+// Open All / Close All for the configured apps (groups + music). "Other" windows are never touched.
 // config here is the resolved runtime config (catalog.resolveConfig).
 const adapter = require('./platform');
 const { appForWindow, allApps } = require('./model');
@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // processes whose windows are gone but which are still alive in the tray (Discord, Slack, ...).
 // A process that still has a window up (e.g. a "Save changes?" prompt) is left alone, so
 // nothing unsaved is lost. Returns { closed, waiting } app names.
-async function killAll(config, { except = [], graceMs = 3000 } = {}) {
+async function closeAll(config, { except = [], graceMs = 3000 } = {}) {
   const targets = adapter.listWindows({ excludePid: process.pid })
     .map((w) => ({ w, app: appForWindow(config, w) }))
     .filter((t) => t.app && !except.includes(t.app.id));
@@ -55,4 +55,4 @@ function maximizeAsTheyAppear(config, ids, watchMs = 30000) {
   }, 500);
 }
 
-module.exports = { killAll, openAll };
+module.exports = { closeAll, openAll };

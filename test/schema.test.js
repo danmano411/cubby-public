@@ -41,8 +41,8 @@ assert.deepStrictEqual(c.groups[0].apps, v1.groups[0].apps, 'inline apps kept as
 assert.deepStrictEqual(c.music, { provider: 'spotify', ...v1.music });
 assert.deepStrictEqual(c.voice, {
   enabled: true, engine: 'builtin', wakeWord: 'cubby',
-  commands: { openAll: ['start'], killAll: ['kill force'] },
-  thresholds: { wake: 0.6, openAll: 0.75, killAll: 0.8 },
+  commands: { openAll: ['start'], closeAll: ['kill force'] },
+  thresholds: { wake: 0.6, openAll: 0.75, closeAll: 0.8 },
 });
 for (const k of ['replaceAltTab', 'startWithWindows', 'socialGroup', 'hotkey']) assert.ok(!(k in c), `${k} removed`);
 assert.ok(!('spotify' in c.panels));
@@ -93,7 +93,7 @@ assert.match(schema.load('{"version": 3}').errors.join(), /newer Cubby/);
 for (const id of ['other', 'music', 'new', 'New']) assert.match(bad({ groups: [{ id, name: 'X', apps: [] }] }).join(), /is reserved/, id);
 // Voice commands need at least one phrase.
 assert.match(bad({ voice: { commands: { openAll: [] } } }).join(), /voice\.commands\.openAll must be a list of at least one phrase/);
-assert.match(bad({ voice: { commands: { killAll: ['  '] } } }).join(), /voice\.commands\.killAll/);
+assert.match(bad({ voice: { commands: { closeAll: ['  '] } } }).join(), /voice\.commands\.closeAll/);
 // A title pattern that doesn't compile is a clear error, not a crash later in the model.
 const badTitle = bad({ groups: [{ id: 'g', name: 'G', apps: [{ id: 'x', name: 'X', match: { exe: 'x.exe', title: 'a(b' } }] }] });
 assert.match(badTitle.join(), /app "x": match\.title "a\(b" isn't a valid pattern/);
@@ -147,3 +147,34 @@ assert.equal(schema.keyLabel('Alt+`', 'darwin'), 'Option+~');
 assert.equal(schema.keyLabel('Cmd+Tab', 'darwin'), 'Cmd+Tab');
 assert.equal(schema.keyLabel('Win+\\', 'darwin'), 'Cmd+\\');
 console.log('schema ok');
+
+// ---- Close All rename: killAll -> closeAll, label override ----
+assert.deepStrictEqual(schema.load(starterText, 'windows').config.voice.commands.closeAll, ['close everything'], 'starter phrase');
+assert.equal(schema.DEFAULTS.labels.closeAll, 'Close all');
+assert.equal(c.labels.closeAll, 'Kill all', 'v1 users keep the Kill wording');
+{
+  const old = { ...JSON.parse(starterText), voice: { enabled: true, wakeWord: 'cubby', commands: { openAll: ['go'], killAll: ['kill force'] }, thresholds: { wake: 0.6, openAll: 0.75, killAll: 0.9 } } };
+  const r = schema.load(JSON.stringify(old), 'windows');
+  assert.deepStrictEqual(r.config.voice.commands, { openAll: ['go'], closeAll: ['kill force'] }, 'phrase kept');
+  assert.deepStrictEqual(r.config.voice.thresholds, { wake: 0.6, openAll: 0.75, closeAll: 0.9 }, 'threshold kept');
+  assert.ok(!('killAll' in r.config.voice.commands) && !('killAll' in r.config.voice.thresholds));
+  assert.equal(r.config.labels.closeAll, 'Kill all');
+  assert.equal(r.upgraded, true);
+  assert.deepStrictEqual(r.errors, []);
+  assert.equal(schema.load(JSON.stringify(r.config), 'windows').upgraded, false, 're-load is a no-op');
+  // other phrase: moved, but the label stays the new default
+  const other = schema.load(JSON.stringify({ ...old, voice: { ...old.voice, commands: { openAll: ['go'], killAll: ['shut it'] } } }), 'windows').config;
+  assert.deepStrictEqual(other.voice.commands.closeAll, ['shut it']);
+  assert.equal(other.labels.closeAll, 'Close all');
+  // an existing label wins
+  const own = schema.load(JSON.stringify({ ...old, labels: { closeAll: 'Quit all' } }), 'windows').config;
+  assert.equal(own.labels.closeAll, 'Quit all');
+}
+assert.match(bad({ labels: { closeAll: '  ' } }).join(), /labels\.closeAll/);
+assert.match(bad({ labels: { closeAll: 5 } }).join(), /labels\.closeAll/);
+assert.deepStrictEqual(bad({ labels: { closeAll: 'Kill all' } }), []);
+assert.equal(schema.closeVerb('Kill all'), 'Kill');
+assert.equal(schema.closeVerb('  Close all '), 'Close');
+assert.equal(schema.closeVerb(''), 'Close');
+assert.equal(schema.verbIng('Close'), 'Closing');
+assert.equal(schema.verbIng('Kill'), 'Killing');

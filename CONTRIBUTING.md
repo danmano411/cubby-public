@@ -30,7 +30,7 @@ Environment variables:
 src/
   main.js            app lifecycle, tray, windows, IPC. Platform-agnostic.
   model.js           pure: turns the config plus the open windows into what the UI shows.
-  session.js         Open All / Kill All.
+  session.js         Open All / Close All.
   layout.js          pure: where the tray, panels, toasts and cue go on a given display.
   config/            schema (defaults, validation, migration) and the app catalog.
   music/             music player providers.

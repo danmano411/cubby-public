@@ -1,7 +1,7 @@
 import AppKit
 
 enum Apps {
-  // Kill All's second step. terminate() is a polite Quit (apps may ask to save); with force, whatever
+  // Close All's second step. terminate() is a polite Quit (apps may ask to save); with force, whatever
   // is still running 1.5s later is force-terminated.
   static func quit(pid: pid_t, force: Bool) -> Bool {
     guard let app = NSRunningApplication(processIdentifier: pid) else { return false }

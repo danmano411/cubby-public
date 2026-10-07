@@ -102,13 +102,13 @@ test('finishEntries fills match.exe: exe path, manifest, then the name', async (
 });
 
 test('mergeDraft takes only what setup owns and the result validates', () => {
-  const current = schema.load(JSON.stringify({ ...schema.DEFAULTS, socialMode: 'dnd', apps: { discord: { badgeOffset: 2 } }, voice: { ...schema.DEFAULTS.voice, thresholds: { wake: 0.5, openAll: 0.7, killAll: 0.9 } } })).config;
+  const current = schema.load(JSON.stringify({ ...schema.DEFAULTS, socialMode: 'dnd', apps: { discord: { badgeOffset: 2 } }, voice: { ...schema.DEFAULTS.voice, thresholds: { wake: 0.5, openAll: 0.7, closeAll: 0.9 } } })).config;
   const draft = {
     keys: { ...current.keys, switch: 'Ctrl+Alt+Tab', musicPrev: '', takeOverSystemSwitcher: true },
     startAtLogin: false, music: { provider: 'none' },
     groups: [{ id: 'social', name: '  Chat ', pingGroup: true, apps: ['discord'] }, { id: 'x', name: '', pingGroup: false, apps: [{ id: 'tool', name: 'Tool', match: { exe: 'tool.exe' }, launch: { exe: 'C:\\tool.exe' } }] }],
     panels: { socials: true, music: true, display: 'PHL27E1N5900R' },
-    voice: { enabled: true, engine: 'vosk', wakeWord: ' Hey  Cubby! ', commands: { openAll: ['Start', 'launch everything'], killAll: [] } },
+    voice: { enabled: true, engine: 'vosk', wakeWord: ' Hey  Cubby! ', commands: { openAll: ['Start', 'launch everything'], closeAll: [] } },
     socialMode: 'ping', version: 99,
   };
   const next = mergeDraft(current, draft);
@@ -128,8 +128,8 @@ test('mergeDraft takes only what setup owns and the result validates', () => {
   assert.deepStrictEqual(next.groups.map((g) => [g.name, !!g.pingGroup]), [['Chat', true], ['Group', false]]);
   assert.equal(next.voice.engine, 'builtin', "vosk isn't downloadable yet");
   assert.equal(next.voice.wakeWord, 'hey cubby');
-  assert.deepStrictEqual(next.voice.commands, { openAll: ['start', 'launch everything'], killAll: current.voice.commands.killAll });
-  assert.deepStrictEqual(next.voice.thresholds, { wake: 0.5, openAll: 0.7, killAll: 0.9 });
+  assert.deepStrictEqual(next.voice.commands, { openAll: ['start', 'launch everything'], closeAll: current.voice.commands.closeAll });
+  assert.deepStrictEqual(next.voice.thresholds, { wake: 0.5, openAll: 0.7, closeAll: 0.9 });
   assert.deepStrictEqual(schema.validate(schema.withDefaults(next)), []);
   assert.equal(current.groups.length, 0, 'the live config is not mutated');
 });

@@ -17,9 +17,10 @@ const DEFAULTS = {
   music: { provider: 'spotify' },
   voice: {
     enabled: false, engine: 'builtin', wakeWord: 'cubby',
-    commands: { openAll: ['start'], killAll: ['kill force'] },
-    thresholds: { wake: 0.6, openAll: 0.75, killAll: 0.8 },
+    commands: { openAll: ['start'], closeAll: ['close everything'] },
+    thresholds: { wake: 0.6, openAll: 0.75, closeAll: 0.8 },
   },
+  labels: { closeAll: 'Close all' }, // wording of the Close All button / menu item / confirm
   apps: {}, // per-app overrides by id: name, tint, badgeOffset, launch fields
 };
 // Group ids the tray uses for its own columns: Other, the music strip and the "+ New group" drop zone.
@@ -42,7 +43,9 @@ function migrateV1(v1) {
     panels: { socials: !!p.socials, music: !!(p.music ?? p.spotify), display: DEFAULTS.panels.display },
     groups: groups.map((g) => (socialGroup && g.id === socialGroup ? { ...g, pingGroup: true } : g)),
     music: m ? { provider: 'spotify', ...m } : { provider: 'none' },
-    voice: { ...clone(DEFAULTS.voice), enabled: voice !== false }, // v1 treated a missing "voice" as on
+    // v1 treated a missing "voice" as on, and its Close All phrase was "kill force" (so keep that wording).
+    voice: { ...clone(DEFAULTS.voice), enabled: voice !== false, commands: { ...DEFAULTS.voice.commands, closeAll: ['kill force'] } },
+    labels: { closeAll: 'Kill all' },
     ...rest,
   };
 }
@@ -57,6 +60,7 @@ function withDefaults(c) {
     panels: { ...d.panels, ...c.panels },
     music: { ...d.music, ...c.music },
     voice: { ...d.voice, ...v, commands: { ...d.voice.commands, ...v.commands }, thresholds: { ...d.voice.thresholds, ...v.thresholds } },
+    labels: { ...d.labels, ...c.labels },
     apps: { ...c.apps },
   };
 }
@@ -69,6 +73,25 @@ function upgradeDisplay(raw, c) {
   c.panels.display = 'focus';
   c.panels.displayChosen = false;
   return true;
+}
+
+// One-time step: voice.commands/thresholds killAll -> closeAll (values untouched). A config whose old phrase
+// was "kill force" also gets labels.closeAll = "Kill all", so existing users keep the wording they had.
+// -> whether it changed c.
+function renameKillAll(c) {
+  const v = c.voice;
+  if (!isObj(v)) return false;
+  let changed = false;
+  for (const k of ['commands', 'thresholds']) {
+    if (!isObj(v[k]) || !('killAll' in v[k])) continue;
+    const old = v[k].killAll;
+    delete v[k].killAll;
+    if (!(('closeAll') in v[k])) v[k].closeAll = old;
+    changed = true;
+  }
+  const phrases = isObj(v.commands) ? v.commands.closeAll : null;
+  if (changed && Array.isArray(phrases) && phrases.includes('kill force') && !c.labels?.closeAll) c.labels = { ...c.labels, closeAll: 'Kill all' };
+  return changed;
 }
 
 // Modifier(s) + one key. A bare key would eat normal typing, so at least one modifier is required.
@@ -87,6 +110,10 @@ function keyLabel(a, platform = process.platform) {
   const key = parts.pop();
   return (platform === 'darwin' ? parts.map((m) => MAC_MODS[m.toLowerCase()] || m) : parts).concat(key).join('+');
 }
+
+// The label's first word is the verb: "Kill all" -> "Kill" ("Kill 11 apps?", "Killing all apps").
+const closeVerb = (label) => String(label || '').trim().split(/\s+/)[0] || 'Close';
+const verbIng = (verb) => verb.replace(/e$/i, '') + 'ing';
 
 function validate(c, platform) {
   const errors = [];
@@ -135,10 +162,11 @@ function validate(c, platform) {
   if (isObj(c.apps)) for (const [id, o] of Object.entries(c.apps)) checkTitle(`apps.${id}`, o?.match);
   checkTitle('music', c.music?.match);
   checkTitle('music.app', c.music?.app?.match);
+  if (c.labels != null && (!isObj(c.labels) || (c.labels.closeAll != null && (typeof c.labels.closeAll !== 'string' || !c.labels.closeAll.trim())))) err('labels.closeAll must be a non-empty string');
   const v = c.voice;
   if (typeof v.enabled !== 'boolean') err('voice.enabled must be true or false');
   if (typeof v.wakeWord !== 'string' || !v.wakeWord.trim()) err('voice.wakeWord must be a word');
-  for (const k of ['openAll', 'killAll']) {
+  for (const k of ['openAll', 'closeAll']) {
     const list = v.commands[k];
     if (!Array.isArray(list) || !list.length || !list.every((p) => typeof p === 'string' && p.trim())) err(`voice.commands.${k} must be a list of at least one phrase`);
   }
@@ -155,9 +183,11 @@ function load(text, platform) {
   // v1 never had "keys" or pingGroup: a file with those but no "version" is a hand-written v2.
   const v2Shape = isObj(raw.keys) || (Array.isArray(raw.groups) && raw.groups.some((g) => isObj(g) && 'pingGroup' in g));
   const migrated = raw.version ? raw.version < VERSION : !v2Shape;
-  const config = withDefaults(migrated ? migrateV1(raw) : { ...raw, version: VERSION });
-  const upgraded = !migrated && upgradeDisplay(raw, config);
+  const src = migrated ? migrateV1(raw) : clone({ ...raw, version: VERSION });
+  const renamed = !migrated && renameKillAll(src);
+  const config = withDefaults(src);
+  const upgraded = (!migrated && upgradeDisplay(raw, config)) || renamed;
   return { config, migrated, upgraded, errors: validate(config, platform) };
 }
 
-module.exports = { VERSION, DEFAULTS, KEY_NAMES, RESERVED_GROUP_IDS, migrateV1, withDefaults, validate, load, keyLabel, normalizeAccel };
+module.exports = { VERSION, DEFAULTS, KEY_NAMES, RESERVED_GROUP_IDS, migrateV1, withDefaults, validate, load, keyLabel, normalizeAccel, closeVerb, verbIng };

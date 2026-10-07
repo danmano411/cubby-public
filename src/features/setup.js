@@ -138,8 +138,10 @@ function mergeDraft(current, draft) {
     if (d.voice.engine === 'builtin') v.engine = 'builtin'; // 'vosk' arrives with its downloader
     const wake = phrases([d.voice.wakeWord])[0];
     if (wake) v.wakeWord = wake;
-    for (const k of ['openAll', 'killAll']) { const p = phrases(d.voice.commands?.[k]); if (p.length) v.commands[k] = p; }
+    for (const k of ['openAll', 'closeAll']) { const p = phrases(d.voice.commands?.[k]); if (p.length) v.commands[k] = p; }
   }
+  const label = typeof d.labels?.closeAll === 'string' ? d.labels.closeAll.trim() : '';
+  if (label) next.labels = { ...next.labels, closeAll: label };
   next.setupComplete = true;
   return next;
 }

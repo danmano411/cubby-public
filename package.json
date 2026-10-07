@@ -7,7 +7,10 @@
   "license": "MIT",
   "author": "Cubby contributors",
   "homepage": "https://github.com/danmano411/cubby-public",
-  "repository": { "type": "git", "url": "https://github.com/danmano411/cubby-public.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danmano411/cubby-public.git"
+  },
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -23,10 +26,24 @@
     "productName": "Cubby",
     "copyright": "Copyright (c) 2026 Cubby contributors",
     "asar": false,
-    "directories": { "buildResources": "build", "output": "dist" },
-    "files": ["src/**/*", "package.json", "!**/*.test.js"],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.test.js"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "artifactName": "Cubby-Setup-${version}.${ext}"
     },
@@ -40,21 +57,41 @@
       "deleteAppDataOnUninstall": false
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "category": "public.app-category.utilities",
       "identity": null,
-      "files": ["!node_modules/koffi/**"],
-      "extraResources": [{ "from": "native/mac-helper/.build/apple/Products/Release/cubby-helper", "to": "cubby-helper" }],
+      "files": [
+        "src/**/*",
+        "package.json",
+        "!**/*.test.js",
+        "!node_modules/koffi/**"
+      ],
+      "extraResources": [
+        {
+          "from": "native/mac-helper/.build/apple/Products/Release/cubby-helper",
+          "to": "cubby-helper"
+        }
+      ],
       "artifactName": "Cubby-${version}-universal.${ext}",
       "extendInfo": {
         "LSUIElement": true,
         "NSMicrophoneUsageDescription": "Cubby listens for your voice commands only when you turn voice on. Recognition runs on this Mac.",
         "NSSpeechRecognitionUsageDescription": "Cubby uses on-device speech recognition for its optional voice commands.",
         "NSAppleEventsUsageDescription": "Cubby asks your music player what is playing and sends it play, pause and skip."
-      }
+      },
+      "x64ArchFiles": "Contents/Resources/cubby-helper"
     },
-    "dmg": { "title": "Cubby ${version}" }
+    "dmg": {
+      "title": "Cubby ${version}"
+    }
   },
   "dependencies": {
     "koffi": "^3.3.2"
