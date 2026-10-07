@@ -1,0 +1,39 @@
+name: Add an app to the catalog
+description: Cubby does not know an app's launch id or match rule yet.
+labels: [catalog]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App name
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS]
+    validations:
+      required: true
+  - type: input
+    id: match
+    attributes:
+      label: Process or bundle id
+      description: "Windows: the exe name from Task Manager, Details tab (for example app.exe). macOS: the bundle id (for example com.example.App)."
+    validations:
+      required: true
+  - type: input
+    id: launch
+    attributes:
+      label: Launch id
+      description: "Windows: the AppUserModelID (PowerShell: Get-StartApps) or the exe path. macOS: the bundle id."
+  - type: input
+    id: category
+    attributes:
+      label: Category
+      description: Social, Browsers, IDE, Notes, Music, Utilities, or a new one.
+  - type: textarea
+    id: quirks
+    attributes:
+      label: Anything odd
+      description: Runs under a generic host (java, electron), shows no badge, opens several windows, and so on.

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 396" width="960" height="396" role="img" aria-label="Illustration of the Cubby tray: four groups of apps, a search box, a music strip, and Open All and Kill All buttons">
+<style>text{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif}</style>
+<rect width="960" height="396" rx="22" fill="#1B1C23"/>
+<rect x="0.5" y="0.5" width="959" height="395" rx="21.5" fill="none" stroke="#2C2E3A"/>
+<rect x="28" y="24" width="904" height="46" rx="12" fill="#12131A"/>
+<text x="52" y="53" font-size="16" fill="#6C7088">Search apps</text>
+<rect x="836" y="35" width="76" height="24" rx="8" fill="#262833"/>
+<text x="874" y="52" font-size="13" text-anchor="middle" fill="#A6B1E1">Alt+Tab</text>
+<text x="36" y="100" font-size="12" font-weight="600" letter-spacing="1.4" fill="#8A8FA8">SOCIAL</text>
+<rect x="28" y="108" width="216" height="160" rx="14" fill="#20222B"/>
+<g opacity="1">
+<rect x="44" y="123" width="30" height="30" rx="8" fill="#7FB7A4"/>
+<text x="86" y="144" font-size="15" fill="#E7E8EE">Chat</text>
+<circle cx="222" cy="138" r="4" fill="#A6B1E1"/>
+</g>
+<circle cx="72" cy="125" r="9" fill="#A6B1E1"/><text x="72" y="129.5" font-size="12" font-weight="700" text-anchor="middle" fill="#16171D">3</text>
+<g opacity="1">
+<rect x="44" y="171" width="30" height="30" rx="8" fill="#E0A97A"/>
+<text x="86" y="192" font-size="15" fill="#E7E8EE">Messages</text>
+<circle cx="222" cy="186" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="0.38">
+<rect x="44" y="219" width="30" height="30" rx="8" fill="#7FA6D6"/>
+<text x="86" y="240" font-size="15" fill="#E7E8EE">Video Call</text>
+</g>
+<text x="260" y="100" font-size="12" font-weight="600" letter-spacing="1.4" fill="#8A8FA8">WORK</text>
+<rect x="252" y="108" width="216" height="160" rx="14" fill="#20222B"/>
+<rect x="258" y="116" width="204" height="44" rx="10" fill="#2C3050" stroke="#A6B1E1" stroke-width="1.5"/>
+<g opacity="1">
+<rect x="268" y="123" width="30" height="30" rx="8" fill="#A6B1E1"/>
+<text x="310" y="144" font-size="15" fill="#E7E8EE">Editor</text>
+<circle cx="446" cy="138" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="1">
+<rect x="268" y="171" width="30" height="30" rx="8" fill="#D9C27A"/>
+<text x="310" y="192" font-size="15" fill="#E7E8EE">Notes</text>
+<circle cx="446" cy="186" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="0.38">
+<rect x="268" y="219" width="30" height="30" rx="8" fill="#D98A8A"/>
+<text x="310" y="240" font-size="15" fill="#E7E8EE">Calendar</text>
+</g>
+<text x="484" y="100" font-size="12" font-weight="600" letter-spacing="1.4" fill="#8A8FA8">BROWSERS</text>
+<rect x="476" y="108" width="216" height="160" rx="14" fill="#20222B"/>
+<g opacity="1">
+<rect x="492" y="123" width="30" height="30" rx="8" fill="#7FB7A4"/>
+<text x="534" y="144" font-size="15" fill="#E7E8EE">Browser</text>
+<circle cx="670" cy="138" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="0.38">
+<rect x="492" y="171" width="30" height="30" rx="8" fill="#8A8FA8"/>
+<text x="534" y="192" font-size="15" fill="#E7E8EE">Private Window</text>
+</g>
+<text x="708" y="100" font-size="12" font-weight="600" letter-spacing="1.4" fill="#8A8FA8">UTILITIES</text>
+<rect x="700" y="108" width="216" height="160" rx="14" fill="#20222B"/>
+<g opacity="1">
+<rect x="716" y="123" width="30" height="30" rx="8" fill="#E0A97A"/>
+<text x="758" y="144" font-size="15" fill="#E7E8EE">Files</text>
+<circle cx="894" cy="138" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="1">
+<rect x="716" y="171" width="30" height="30" rx="8" fill="#8A8FA8"/>
+<text x="758" y="192" font-size="15" fill="#E7E8EE">Terminal</text>
+<circle cx="894" cy="186" r="4" fill="#A6B1E1"/>
+</g>
+<g opacity="0.38">
+<rect x="716" y="219" width="30" height="30" rx="8" fill="#7FA6D6"/>
+<text x="758" y="240" font-size="15" fill="#E7E8EE">Calculator</text>
+</g>
+<rect x="28" y="312" width="468" height="56" rx="14" fill="#20222B"/>
+<rect x="42" y="323" width="34" height="34" rx="8" fill="#7FB7A4"/>
+<text x="90" y="337" font-size="14" fill="#E7E8EE">Example Song</text>
+<text x="90" y="356" font-size="12" fill="#8A8FA8">Example Artist</text>
+<g fill="#E7E8EE"><path d="M364 332v16h2.5v-16z"/><path d="M378 332v16l-11 -8z"/></g>
+<circle cx="412" cy="340" r="15" fill="#A6B1E1"/><path d="M408 333l11 7l-11 7z" fill="#16171D"/>
+<g fill="#E7E8EE"><path d="M446 332v16l11 -8z"/><path d="M459 332v16h2.5v-16z"/></g>
+<rect x="704" y="312" width="108" height="56" rx="14" fill="#A6B1E1"/>
+<text x="758" y="346" font-size="15" font-weight="600" text-anchor="middle" fill="#16171D">Open All</text>
+<rect x="824" y="312" width="108" height="56" rx="14" fill="#2A1F24" stroke="#8F4A55"/>
+<text x="878" y="346" font-size="15" font-weight="600" text-anchor="middle" fill="#E59AA5">Kill All</text>
+</svg>

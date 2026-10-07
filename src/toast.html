@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+  <title>Cubby ping</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    #toast { margin: 4px; height: 84px; display: flex; align-items: center; gap: 12px; padding: 0 14px; cursor: pointer;
+      background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 14px;
+      animation: in 0.18s ease-out; }
+    @keyframes in { from { opacity: 0; transform: translateX(12px); } }
+    .icon { width: 36px; height: 36px; border-radius: 9px; }
+    .text { min-width: 0; flex: 1; }
+    .name { font-weight: 700; }
+    .sub { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .x { color: var(--faint); border: 0; background: none; font-size: 16px; cursor: pointer; padding: 6px; }
+    .x:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div id="toast"></div>
+  <script src="ui.js"></script>
+  <script src="toast.js"></script>
+</body>
+</html>

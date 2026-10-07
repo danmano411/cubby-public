@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm run check
+
+      # PRIVACY_DENYLIST is a repository secret (one pattern per line). Forks and pull requests
+      # from forks do not receive it, and the check then skips itself with a warning.
+      - name: Privacy check
+        run: node scripts/privacy-check.mjs .
+        env:
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+
+      - name: Build the macOS helper
+        if: runner.os == 'macOS'
+        shell: bash
+        run: swift build -c release --package-path native/mac-helper

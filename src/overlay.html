@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+  <title>Cubby</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+  <div id="backdrop"></div>
+  <main id="panel">
+    <header>
+      <div class="brand"><span class="logo"></span>Cubby</div>
+      <input id="filter" placeholder="Type to jump…" spellcheck="false" autocomplete="off">
+      <div class="session">
+        <button id="open-all"><span class="ico">▶</span>Open all</button>
+        <button id="kill-all"><span class="ico">✕</span><span class="label">Kill all</span></button>
+      </div>
+      <div class="modes" id="modes">
+        <span class="modes-label">Socials</span>
+        <button data-mode="dnd" title="Minimize socials, collect pings silently">DND</button>
+        <button data-mode="ping" title="Small toast when a social app wants you">Ping Me</button>
+      </div>
+      <div class="modes" id="panels">
+        <span class="modes-label">Side</span>
+        <button data-panel="socials" title="Socials strip on the right edge, with pings">Socials</button>
+        <button data-panel="music" title="Now-playing card on the right edge">Music</button>
+      </div>
+    </header>
+    <section id="groups"></section>
+    <footer>
+      <div id="music"></div>
+      <div class="hints" id="hints"></div>
+    </footer>
+  </main>
+  <script src="ui.js"></script>
+  <script src="overlay.js"></script>
+</body>
+</html>

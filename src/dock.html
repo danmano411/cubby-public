@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+  <title>Cubby dock</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    /* On a short work area main shrinks this window; the strip scrolls instead of being cut off. */
+    body { height: 100vh; overflow-y: auto; scrollbar-width: none; }
+    #dock { margin: 0 4px; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px; align-items: center;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+    .slot { position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; }
+    .slot:hover { background: var(--accent-soft); }
+    .slot .icon { width: 32px; height: 32px; }
+    .slot.closed .icon { filter: grayscale(1); opacity: 0.35; }
+    .slot .badge, .slot .dot { position: absolute; top: 0; right: 0; }
+    .sep { width: 28px; height: 1px; background: var(--line); margin: -2px 0; }
+    .logo { width: 22px; height: 22px; border-radius: 6px; background:
+      linear-gradient(var(--on-accent) 0 0) 4px 4px / 6px 6px no-repeat, linear-gradient(var(--on-accent) 0 0) 12px 4px / 6px 6px no-repeat,
+      linear-gradient(var(--on-accent) 0 0) 4px 12px / 6px 6px no-repeat, linear-gradient(var(--on-accent) 0 0) 12px 12px / 6px 6px no-repeat, var(--accent); }
+  </style>
+</head>
+<body>
+  <div id="dock"></div>
+  <script src="ui.js"></script>
+  <script src="dock.js"></script>
+</body>
+</html>

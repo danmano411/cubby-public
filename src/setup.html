@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+  <title>Cubby setup</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <div id="app">
+    <header id="bar">
+      <div class="brand"><span class="logo"></span>Cubby<span id="mode-title"></span></div>
+      <div class="win-btns">
+        <button id="win-min" title="Minimize" aria-label="Minimize">&#8211;</button>
+        <button id="win-close" title="Close" aria-label="Close">&#10005;</button>
+      </div>
+    </header>
+    <div id="shell">
+      <nav id="nav" aria-label="Sections"></nav>
+      <main id="page"></main>
+    </div>
+    <footer id="foot"></footer>
+  </div>
+  <script src="ui.js"></script>
+  <script src="setup.js"></script>
+</body>
+</html>

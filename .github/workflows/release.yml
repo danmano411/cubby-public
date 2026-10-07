@@ -1,0 +1,80 @@
+name: Release
+
+# Push a tag such as v0.1.0 (it must match the version in package.json) to build the unsigned
+# installers and attach them to a DRAFT pre-release. Nothing is published until you press
+# "Publish release" on GitHub.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag matches package.json
+        shell: bash
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run check
+      - name: Build the NSIS installer (unsigned)
+        run: npx electron-builder --win nsis --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/Cubby-Setup-*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag matches package.json
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run check
+      - name: Build the macOS helper
+        run: |
+          swift build -c release --arch arm64 --arch x86_64 --package-path native/mac-helper
+          # Ad-hoc signature: macOS ties permission grants to it (package.json copies this into the app).
+          codesign --force -s - native/mac-helper/.build/apple/Products/Release/cubby-helper
+      - name: Build the universal dmg (unsigned, not notarized)
+        run: npx electron-builder --mac dmg --universal --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/Cubby-*-universal.dmg
+          if-no-files-found: error
+
+  release:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/* \
+            --draft --prerelease --generate-notes \
+            --title "Cubby ${GITHUB_REF_NAME#v} (beta)" \
+            --notes-file .github/release-notes.md

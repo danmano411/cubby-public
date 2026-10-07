@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "setupComplete": false,
+  "keys": { "switch": "Alt+Tab", "search": "Alt+`", "musicPrev": "Alt+[", "musicPlay": "Alt+\\", "musicNext": "Alt+]", "takeOverSystemSwitcher": true },
+  "startAtLogin": true,
+  "socialMode": "ping",
+  "panels": { "socials": false, "music": false, "display": "focus" },
+  "groups": [
+    { "id": "social", "name": "Social", "pingGroup": true, "apps": ["discord", "slack"] },
+    { "id": "work", "name": "Work", "apps": [] },
+    { "id": "browsers", "name": "Browsers", "apps": ["chrome"] },
+    { "id": "utilities", "name": "Utilities", "apps": ["files"] }
+  ],
+  "music": { "provider": "spotify" },
+  "voice": {
+    "enabled": false, "engine": "builtin", "wakeWord": "cubby",
+    "commands": { "openAll": ["start"], "killAll": ["kill force"] },
+    "thresholds": { "wake": 0.6, "openAll": 0.75, "killAll": 0.8 }
+  },
+  "apps": {}
+}

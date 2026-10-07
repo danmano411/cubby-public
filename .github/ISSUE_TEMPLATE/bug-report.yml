@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in Cubby does not work.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Cubby version
+      description: Shown in the release you installed, or in package.json.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: "For example: Windows 11 23H2, macOS 14.5."
+    validations:
+      required: true
+  - type: textarea
+    id: displays
+    attributes:
+      label: Monitors
+      description: "If it involves more than one screen: how many, their scaling (100%, 150%, 250%), and how they are arranged."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Debug log
+      description: |
+        Quit Cubby, then start it from a terminal with CUBBY_DEBUG set and paste what it prints.
+        PowerShell: `$env:CUBBY_DEBUG=1; & "$env:LOCALAPPDATA\Programs\Cubby\Cubby.exe" | Out-Host` (the pipe makes the output show up)
+        macOS: `CUBBY_DEBUG=1 /Applications/Cubby.app/Contents/MacOS/Cubby`
+      render: text

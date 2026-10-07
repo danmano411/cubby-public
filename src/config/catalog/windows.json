@@ -1,0 +1,29 @@
+[
+  { "id": "discord", "name": "Discord", "category": "Social", "badgeOffset": 1, "match": { "exe": "discord.exe" }, "launch": { "appId": "com.squirrel.Discord.Discord" } },
+  { "id": "slack", "name": "Slack", "category": "Social", "match": { "exe": "slack.exe" }, "launch": { "appId": "com.tinyspeck.slackdesktop_8yrtsj140pw4g!Slack" } },
+  { "id": "teams", "name": "Microsoft Teams", "category": "Social", "match": { "exe": "ms-teams.exe" }, "launch": { "appId": "MSTeams_8wekyb3d8bbwe!MSTeams" } },
+  { "id": "zoom", "name": "Zoom", "category": "Social", "match": { "exe": "zoom.exe" }, "launch": { "appId": "zoom.us.Zoom Video Meetings" } },
+  { "id": "whatsapp", "name": "WhatsApp", "category": "Social", "match": { "exe": "whatsapp.root.exe" }, "launch": { "appId": "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App" }, "note": "Store version; the older Electron build runs as whatsapp.exe, so override match.exe for that one." },
+  { "id": "telegram", "name": "Telegram", "category": "Social", "match": { "exe": "telegram.exe" }, "launch": { "exe": "%APPDATA%\\Telegram Desktop\\Telegram.exe" } },
+
+  { "id": "chrome", "name": "Chrome", "category": "Browsers", "match": { "exe": "chrome.exe" }, "launch": { "appId": "Chrome" } },
+  { "id": "edge", "name": "Edge", "category": "Browsers", "match": { "exe": "msedge.exe" }, "launch": { "appId": "MSEdge" } },
+  { "id": "firefox", "name": "Firefox", "category": "Browsers", "match": { "exe": "firefox.exe" }, "launch": { "appId": "Mozilla.Firefox_n80bbvh6b1yt2!App" }, "note": "Store build; the classic installer registers a different id, so override launch.appId for that one." },
+  { "id": "arc", "name": "Arc", "category": "Browsers", "match": { "exe": "arc.exe" }, "launch": { "appId": "TheBrowserCompany.Arc_ttt1ap7aakyb4!Arc" } },
+  { "id": "brave", "name": "Brave", "category": "Browsers", "match": { "exe": "brave.exe" }, "launch": { "exe": "%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" } },
+
+  { "id": "vscode", "name": "VS Code", "category": "IDE", "match": { "exe": "code.exe" }, "launch": { "appId": "Microsoft.VisualStudioCode" } },
+  { "id": "cursor", "name": "Cursor", "category": "IDE", "match": { "exe": "cursor.exe" }, "launch": { "appId": "Anysphere.Cursor" } },
+  { "id": "intellij", "name": "IntelliJ IDEA", "category": "IDE", "match": { "exe": "idea64.exe" }, "note": "No launch: the Start menu id contains the version number. Set launch.appId or launch.exe in config.apps.intellij to launch it from Cubby." },
+  { "id": "pycharm", "name": "PyCharm", "category": "IDE", "match": { "exe": "pycharm64.exe" }, "note": "No launch: the Start menu id contains the version number. Set launch.appId or launch.exe in config.apps.pycharm to launch it from Cubby." },
+
+  { "id": "notion", "name": "Notion", "category": "Notes", "match": { "exe": "notion.exe" }, "launch": { "exe": "%LOCALAPPDATA%\\Programs\\Notion\\Notion.exe" } },
+  { "id": "notion-calendar", "name": "Notion Calendar", "category": "Notes", "match": { "exe": "notion calendar.exe" }, "launch": { "appId": "com.cron.electron" } },
+  { "id": "obsidian", "name": "Obsidian", "category": "Notes", "match": { "exe": "obsidian.exe" }, "launch": { "appId": "md.obsidian" } },
+  { "id": "notepad", "name": "Notepad", "category": "Notes", "match": { "exe": "notepad.exe" }, "launch": { "appId": "Microsoft.WindowsNotepad_8wekyb3d8bbwe!App" } },
+
+  { "id": "spotify", "name": "Spotify", "category": "Music", "tint": "#1DB954", "match": { "exe": "spotify.exe" }, "launch": { "appId": "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" } },
+
+  { "id": "files", "name": "File Explorer", "category": "Utilities", "match": { "exe": "explorer.exe" }, "launch": { "appId": "Microsoft.Windows.Explorer" } },
+  { "id": "terminal", "name": "Windows Terminal", "category": "Utilities", "match": { "exe": "windowsterminal.exe" }, "launch": { "appId": "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App" } }
+]

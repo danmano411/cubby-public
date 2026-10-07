@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cubby">
+  <rect width="1024" height="1024" rx="232" fill="#A6B1E1"/>
+  <rect x="176" y="176" width="304" height="304" rx="64" fill="#16171D"/>
+  <rect x="544" y="176" width="304" height="304" rx="64" fill="#16171D"/>
+  <rect x="176" y="544" width="304" height="304" rx="64" fill="#16171D"/>
+  <rect x="544" y="544" width="304" height="304" rx="64" fill="#16171D"/>
+</svg>

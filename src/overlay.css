@@ -1,0 +1,117 @@
+#backdrop { position: fixed; inset: 0; }
+#panel {
+  position: relative; margin: 0 auto; max-height: 100vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55); overflow: hidden;
+  animation: pop 0.12s ease-out;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+
+header { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
+.logo { width: 16px; height: 16px; border-radius: 4px; background:
+  linear-gradient(var(--on-accent) 0 0) 3px 3px / 4px 4px no-repeat, linear-gradient(var(--on-accent) 0 0) 9px 3px / 4px 4px no-repeat,
+  linear-gradient(var(--on-accent) 0 0) 3px 9px / 4px 4px no-repeat, linear-gradient(var(--on-accent) 0 0) 9px 9px / 4px 4px no-repeat, var(--accent); }
+#filter { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--text); font: inherit; outline: none; }
+#filter:focus { border-color: rgba(166, 177, 225, 0.55); }
+.session { display: flex; gap: 6px; }
+.session button { display: flex; align-items: center; gap: 7px; font: inherit; font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 10px; cursor: pointer; white-space: nowrap; border: 1px solid; }
+.session .ico { font-size: 10px; }
+#open-all { background: rgba(166, 177, 225, 0.14); border-color: rgba(166, 177, 225, 0.45); color: var(--accent); }
+#open-all:hover { background: rgba(166, 177, 225, 0.24); }
+#kill-all { background: rgba(232, 150, 160, 0.12); border-color: rgba(232, 150, 160, 0.42); color: var(--danger); }
+#kill-all:hover { background: rgba(232, 150, 160, 0.22); }
+#kill-all.armed { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
+.modes { display: flex; align-items: center; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.modes-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; padding: 0 8px 0 6px; }
+.modes button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.modes button:hover { color: var(--text); }
+.modes button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+#groups { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 1px; background: var(--line); overflow: auto; }
+.group { background: var(--panel); padding: 12px 8px 14px; min-height: 180px; }
+.group.social-dnd .row:not(.closed) { opacity: 0.55; }
+.group h2 { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); padding: 0 8px 10px; }
+.group h2 small { color: var(--faint); font-weight: 500; letter-spacing: 0; }
+.group h2 .mode-tag { color: var(--accent); }
+
+.row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; cursor: pointer; position: relative; border: 1px solid transparent; }
+.row:hover { background: rgba(255, 255, 255, 0.05); }
+.row.sel { background: var(--accent-soft); border-color: var(--accent); }
+.row .text { min-width: 0; flex: 1; }
+.row .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .live { position: absolute; left: 30px; top: 27px; width: 9px; height: 9px; border-radius: 50%; background: var(--live); border: 2px solid var(--panel); }
+.row .count { color: var(--muted); font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+.row .here { color: var(--accent); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.row.closed .icon { filter: grayscale(1); opacity: 0.35; outline: 1.5px dashed var(--faint); outline-offset: 2px; }
+.row.closed .name { color: var(--faint); font-weight: 500; }
+.row.closed .sub { color: var(--faint); }
+.row.closed:hover .sub, .row.closed.sel .sub { color: var(--accent); }
+
+.row.win { margin-left: 18px; padding: 5px 8px; }
+.row.win::before { content: ""; position: absolute; left: -9px; top: -4px; bottom: 50%; width: 8px; border-left: 1px solid var(--faint); border-bottom: 1px solid var(--faint); border-bottom-left-radius: 6px; }
+.row.win .name { font-weight: 500; font-size: 12px; }
+.row.win.min .name { color: var(--muted); }
+
+.dim, .group.social-dnd .row.dim { opacity: 0.18; } /* else DND's 0.55 wins and non-matches look like matches */
+
+footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--line); }
+#music { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; padding: 5px 8px; margin-left: -9px; border: 1px solid transparent; border-radius: 12px; }
+#music.sel { background: var(--accent-soft); border-color: var(--accent); }
+#music .now { min-width: 0; cursor: pointer; }
+#music .now .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#music .now .sub { color: var(--muted); font-size: 11.5px; }
+#music .ctl { display: flex; gap: 4px; }
+#music .ctl button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 13px; }
+#music .ctl button:hover { border-color: var(--accent); }
+#music.off .icon { filter: grayscale(1); opacity: 0.35; }
+.hints { color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+kbd { font: 10.5px "Segoe UI", sans-serif; color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; margin: 0 1px 0 6px; }
+kbd + kbd { margin-left: 1px; }
+
+/* ---- Editing groups: drag to group, naming, undo toast ---- */
+.group { position: relative; }
+.group h2 { cursor: grab; }
+.group .empty { color: var(--faint); font-style: italic; padding: 8px; }
+
+body.dragging, body.dragging * { cursor: grabbing !important; }
+body.dragging.denied, body.dragging.denied * { cursor: not-allowed !important; }
+.dragging .row { pointer-events: none; }
+.dragging .row:hover { background: none; }
+.row.drag-src, #music.drag-src, .group.drag-src { opacity: 0.35; }
+.ghost { position: fixed; left: 0; top: 0; z-index: 10; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); font-weight: 600; }
+.ghost .icon { width: 22px; height: 22px; font-size: 11px; }
+
+.group.drop { background-image: linear-gradient(var(--accent-soft), var(--accent-soft)); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.group.drop-before { box-shadow: inset 3px 0 0 var(--accent); }
+.group.drop-end { box-shadow: inset -3px 0 0 var(--accent); }
+.drop-line { position: absolute; left: 8px; right: 8px; height: 2px; margin-top: -1px; border-radius: 1px; background: var(--accent); pointer-events: none; }
+.drop-line[hidden] { display: none; }
+
+/* The drop zones float over the bottom-right of the groups area (right/bottom set by addZones()) and
+   only exist on screen during a drag: they take no grid space, so a drag starting moves no column. */
+.zones { position: absolute; z-index: 4; width: 180px; display: flex; flex-direction: column; gap: 1px; background: var(--line);
+  border: 1px solid var(--accent); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); animation: pop 0.12s ease-out; }
+.zones:not(.open) { display: none; }
+.zones .group.zone { min-height: 88px; padding: 12px 8px; }
+.zones.naming .zone:not(.naming) { display: none; }
+.group.zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.group.zone::before { content: ""; position: absolute; inset: 8px; border: 1.5px dashed var(--faint); border-radius: 12px; pointer-events: none; }
+.group.zone.drop::before { border-color: var(--accent); }
+.zone-label { color: var(--muted); font-weight: 600; }
+.zone-sub { color: var(--faint); font-size: 11.5px; padding: 0 16px; }
+.group.zone.naming { justify-content: flex-start; padding-top: 20px; }
+.group.zone.naming h2 { justify-content: center; padding-bottom: 8px; }
+.name-field { user-select: text; -webkit-user-select: text; width: calc(100% - 28px); margin: 0 14px 6px; background: var(--panel-2); border: 1px solid var(--accent); border-radius: 8px; padding: 7px 10px; color: var(--text); font: inherit; font-weight: 600; outline: none; }
+.name-field.inline { width: 100%; margin: 0 8px 0 0; padding: 2px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+.edit-toast { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 12px; max-width: 80%;
+  padding: 8px 8px 8px 14px; background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); animation: pop 0.12s ease-out; }
+.edit-toast[hidden] { display: none; }
+.edit-toast .msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.edit-toast button { font: inherit; font-weight: 600; font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 3px 12px; cursor: pointer; }
+.edit-toast.error { border-color: var(--danger); padding-right: 14px; }
+.edit-toast.undo, .edit-toast.redo, .edit-toast.info { padding-right: 14px; }

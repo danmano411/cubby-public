@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "setupComplete": true,
+  "socialMode": "ping",
+  "groups": [
+    { "id": "chat", "name": "Chat", "pingGroup": true, "apps": [
+      { "id": "chatter", "name": "Chatter", "badgeOffset": 1, "match": { "exe": "chatter.exe" }, "launch": { "appId": "Example.Chatter" } },
+      { "id": "pinger", "name": "Pinger", "match": { "exe": "pinger.exe" }, "launch": { "appId": "Example.Pinger_abc!App" } },
+      { "id": "meetly", "name": "Meetly", "match": { "exe": "meetly.exe" }, "launch": { "appId": "Example.Meetly_abc!Meetly" } }
+    ]},
+    { "id": "tools", "name": "Tools", "apps": [
+      { "id": "notes", "name": "Notes", "match": { "exe": "pythonw.exe", "title": "^notes$" }, "launch": { "exe": "C:/tools/notes.exe" } }
+    ]},
+    { "id": "browsers", "name": "Browsers", "apps": [
+      { "id": "webby", "name": "Webby", "match": { "exe": "webby.exe" }, "launch": { "appId": "Webby" } },
+      { "id": "surfer", "name": "Surfer", "match": { "exe": "surfer.exe" }, "launch": { "appId": "Example.Surfer!App" } }
+    ]}
+  ],
+  "music": { "provider": "spotify", "id": "tunes", "name": "Tunes", "tint": "#1DB954", "match": { "exe": "spotify.exe" }, "launch": { "appId": "Example.Tunes!App" } }
+}

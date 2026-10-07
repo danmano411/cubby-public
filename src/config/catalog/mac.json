@@ -1,0 +1,31 @@
+[
+  { "id": "discord", "name": "Discord", "category": "Social", "match": { "bundleId": "com.hnc.Discord" }, "launch": { "bundleId": "com.hnc.Discord" } },
+  { "id": "slack", "name": "Slack", "category": "Social", "match": { "bundleId": "com.tinyspeck.slackmacgap" }, "launch": { "bundleId": "com.tinyspeck.slackmacgap" } },
+  { "id": "teams", "name": "Microsoft Teams", "category": "Social", "match": { "bundleId": "com.microsoft.teams2" }, "launch": { "bundleId": "com.microsoft.teams2" } },
+  { "id": "zoom", "name": "Zoom", "category": "Social", "match": { "bundleId": "us.zoom.xos" }, "launch": { "bundleId": "us.zoom.xos" } },
+  { "id": "whatsapp", "name": "WhatsApp", "category": "Social", "match": { "bundleId": "net.whatsapp.WhatsApp" }, "launch": { "bundleId": "net.whatsapp.WhatsApp" } },
+  { "id": "telegram", "name": "Telegram", "category": "Social", "match": { "bundleId": "ru.keepcoder.Telegram" }, "launch": { "bundleId": "ru.keepcoder.Telegram" } },
+
+  { "id": "chrome", "name": "Chrome", "category": "Browsers", "match": { "bundleId": "com.google.Chrome" }, "launch": { "bundleId": "com.google.Chrome" } },
+  { "id": "edge", "name": "Edge", "category": "Browsers", "match": { "bundleId": "com.microsoft.edgemac" }, "launch": { "bundleId": "com.microsoft.edgemac" } },
+  { "id": "firefox", "name": "Firefox", "category": "Browsers", "match": { "bundleId": "org.mozilla.firefox" }, "launch": { "bundleId": "org.mozilla.firefox" } },
+  { "id": "arc", "name": "Arc", "category": "Browsers", "match": { "bundleId": "company.thebrowser.Browser" }, "launch": { "bundleId": "company.thebrowser.Browser" } },
+  { "id": "safari", "name": "Safari", "category": "Browsers", "match": { "bundleId": "com.apple.Safari" }, "launch": { "bundleId": "com.apple.Safari" } },
+  { "id": "brave", "name": "Brave", "category": "Browsers", "match": { "bundleId": "com.brave.Browser" }, "launch": { "bundleId": "com.brave.Browser" } },
+
+  { "id": "vscode", "name": "VS Code", "category": "IDE", "match": { "bundleId": "com.microsoft.VSCode" }, "launch": { "bundleId": "com.microsoft.VSCode" } },
+  { "id": "cursor", "name": "Cursor", "category": "IDE", "match": { "bundleId": "com.todesktop.230313mzl4w4u92" }, "launch": { "bundleId": "com.todesktop.230313mzl4w4u92" } },
+  { "id": "intellij", "name": "IntelliJ IDEA", "category": "IDE", "match": { "bundleId": "com.jetbrains.intellij" }, "launch": { "bundleId": "com.jetbrains.intellij" }, "note": "Ultimate edition. The Community edition is com.jetbrains.intellij.ce: override match.bundleId and launch.bundleId in config.apps.intellij." },
+  { "id": "pycharm", "name": "PyCharm", "category": "IDE", "match": { "bundleId": "com.jetbrains.pycharm" }, "launch": { "bundleId": "com.jetbrains.pycharm" }, "note": "Professional edition. The Community edition is com.jetbrains.pycharm.ce." },
+
+  { "id": "notion", "name": "Notion", "category": "Notes", "match": { "bundleId": "notion.id" }, "launch": { "bundleId": "notion.id" } },
+  { "id": "notion-calendar", "name": "Notion Calendar", "category": "Notes", "match": { "bundleId": "com.cron.electron" }, "launch": { "bundleId": "com.cron.electron" } },
+  { "id": "obsidian", "name": "Obsidian", "category": "Notes", "match": { "bundleId": "md.obsidian" }, "launch": { "bundleId": "md.obsidian" } },
+  { "id": "notepad", "name": "TextEdit", "category": "Notes", "match": { "bundleId": "com.apple.TextEdit" }, "launch": { "bundleId": "com.apple.TextEdit" }, "note": "Same id as the Windows catalog's Notepad so one config works on both." },
+
+  { "id": "spotify", "name": "Spotify", "category": "Music", "tint": "#1DB954", "match": { "bundleId": "com.spotify.client" }, "launch": { "bundleId": "com.spotify.client" } },
+  { "id": "apple-music", "name": "Apple Music", "category": "Music", "tint": "#FA2D48", "match": { "bundleId": "com.apple.Music" }, "launch": { "bundleId": "com.apple.Music" } },
+
+  { "id": "files", "name": "Finder", "category": "Utilities", "match": { "bundleId": "com.apple.finder" }, "launch": { "bundleId": "com.apple.finder" } },
+  { "id": "terminal", "name": "Terminal", "category": "Utilities", "match": { "bundleId": "com.apple.Terminal" }, "launch": { "bundleId": "com.apple.Terminal" } }
+]
