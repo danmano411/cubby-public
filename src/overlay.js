@@ -209,8 +209,11 @@ function goSelected() {
 }
 
 $filter.addEventListener('input', () => {
-  const rows = allRows().filter(isMatch);
-  const best = rows.find((r) => r.kind !== 'closed' && r.kind !== 'multi') || rows[0];
+  // App name beats window title (a chat app showing "#announcements" must not win "nt" over an app named nt),
+  // then open windows beat closed apps, then layout order (sort is stable).
+  const name = (r) => { const n = r.app.name.toLowerCase(); return n.startsWith(q()) ? 0 : n.includes(q()) ? 1 : 2; };
+  const shut = (r) => (r.kind === 'closed' || r.kind === 'multi' ? 1 : 0);
+  const best = allRows().filter(isMatch).sort((a, b) => name(a) - name(b) || shut(a) - shut(b))[0];
   if (best) sel = best.key;
   render();
 });
