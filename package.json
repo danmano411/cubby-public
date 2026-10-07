@@ -72,7 +72,8 @@
         "src/**/*",
         "package.json",
         "!**/*.test.js",
-        "!node_modules/koffi/**"
+        "!node_modules/koffi/**",
+        "!node_modules/@koromix/**"
       ],
       "extraResources": [
         {
