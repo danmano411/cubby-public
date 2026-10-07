@@ -131,6 +131,19 @@ function focus(hwnd) {
   return SetForegroundWindow(hwnd);
 }
 
+// Bring one of OUR windows to the front. The hook swallows the hotkey, so Windows may not count
+// Cubby as the source of the last input and refuse SetForegroundWindow. Sending one tagged,
+// unassigned key first makes us that source. Not an Alt tap like focus() uses: that would end an
+// Alt+Tab session early. (AttachThreadInput also works but makes the window flap focus/blur on
+// detach, leaving Electron thinking it is unfocused.) Returns whether the window ended up in front.
+function forceForeground(hwnd) {
+  if (Number(GetForegroundWindow()) === hwnd) return true;
+  maskModifierRelease();
+  BringWindowToTop(hwnd);
+  SetForegroundWindow(hwnd);
+  return Number(GetForegroundWindow()) === hwnd;
+}
+
 const MEDIA = { prev: 0xB1, next: 0xB0, play: 0xB3 };
 function mediaKey(k) {
   keybd_event(MEDIA[k], 0, 0, 0);
@@ -174,6 +187,15 @@ const VK_TAB = 0x09, VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_LWIN = 0x5B, VK_RWIN
 const WM_KEYDOWN = 0x100, WM_SYSKEYDOWN = 0x104, LLKHF_ALTDOWN = 0x20;
 const RELEASE = { alt: [VK_MENU, 0xA4, 0xA5], ctrl: [VK_CONTROL, 0xA2, 0xA3], win: [VK_LWIN, VK_RWIN] };
 const held = (vk) => (GetAsyncKeyState(vk) & 0x8000) !== 0;
+// Swallowing the key of an Alt/Win shortcut leaves the focused app seeing a LONE Alt (or Win) tap:
+// Alt activates its menu bar and grabs focus back from the tray (any app with a classic menu
+// bar), Win opens Start. Tapping an unassigned key while the modifier is held "masks" the
+// release, the same trick AutoHotkey uses (MenuMaskKey).
+const VK_MASK = 0xE8, MASK_TAG = 0xC0BB7; // unassigned VK; dwExtraInfo tag so the hook ignores it
+function maskModifierRelease() {
+  keybd_event(VK_MASK, 0, 0, MASK_TAG);
+  keybd_event(VK_MASK, 0, KEYEVENTF_KEYUP, MASK_TAG);
+}
 const fits = (spec, mods) => spec.alt === mods.alt && spec.ctrl === mods.ctrl && spec.win === mods.win && (!spec.shift || mods.shift);
 
 function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = () => {}, onRelease = () => {}, binds = {} }) {
@@ -191,19 +213,21 @@ function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = (
   const proc = koffi.register((code, wParam, lParam) => {
     if (code === 0) {
       const k = koffi.decode(lParam, KBDLLHOOKSTRUCT);
+      if (Number(k.extra) === MASK_TAG) return CallNextHookEx(hhk, code, wParam, lParam);
       const down = wParam === WM_KEYDOWN || wParam === WM_SYSKEYDOWN;
       if (release.has(k.vkCode) && !down) setImmediate(onRelease);
       const binds = table.get(k.vkCode);
       const isSwitch = sw && k.vkCode === sw.vk;
       if (binds || isSwitch) {
         const mods = { alt: !!(k.flags & LLKHF_ALTDOWN), ctrl: held(VK_CONTROL), shift: held(VK_SHIFT), win: held(VK_LWIN) || held(VK_RWIN) };
+        const masked = down && (mods.alt || mods.win);
         for (const b of binds || []) {
           if (!fits(b.spec, mods)) continue;
-          if (down) setImmediate(b.fn);
+          if (down) setImmediate(() => { if (masked) maskModifierRelease(); b.fn(); });
           return 1;
         }
         if (isSwitch && fits(sw, mods) && takeSwitch()) {
-          if (down) { const back = mods.shift && !sw.shift; setImmediate(() => onSwitch(back)); }
+          if (down) { const back = mods.shift && !sw.shift; setImmediate(() => { if (masked) maskModifierRelease(); onSwitch(back); }); }
           return 1; // swallow both down and up so Windows' switcher never sees it
         }
       }
@@ -329,6 +353,7 @@ function removeStaleLoginItems(keepName, commandParts) {
 module.exports = {
   listWindows,
   focus,
+  forceForeground,
   minimize: (hwnd) => ShowWindow(hwnd, SW_MINIMIZE),
   maximize: (hwnd) => ShowWindow(hwnd, 3 /* SW_MAXIMIZE */),
   close: (hwnd) => PostMessageW(hwnd, WM_CLOSE, 0, 0),

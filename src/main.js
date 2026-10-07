@@ -161,6 +161,26 @@ function showOverlay({ altSession = false } = {}) {
   overlay.webContents.send('open', { ...snapshot(), foreground: foregroundAtOpen, previous, altSession });
   overlay.show();
   overlay.focus();
+  ensureOverlayFocus();
+  setTimeout(ensureOverlayFocus, 120); // activation can settle a moment after show()
+}
+
+// Windows sometimes refuses focus right after the hook swallowed the hotkey: the tray shows but
+// keystrokes (Esc, typing) keep going to the app underneath. Check, and take focus properly.
+function ensureOverlayFocus() {
+  if (!overlay.isVisible()) return;
+  const self = adapter.handleOf(overlay);
+  if (adapter.foreground() === self) return;
+  const ok = adapter.forceForeground ? adapter.forceForeground(self) : (app.focus({ steal: true }), true);
+  log('focus rescue', ok);
+  overlay.webContents.focus();
+  // Once we are really in front, make Electron agree, or keys (Esc) never reach the page.
+  setTimeout(() => {
+    if (!overlay.isVisible() || overlay.isFocused()) return;
+    log('focus resync');
+    overlay.focus();
+    overlay.webContents.focus();
+  }, 60);
 }
 const hideOverlay = () => overlay.isVisible() && overlay.hide();
 

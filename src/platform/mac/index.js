@@ -242,7 +242,14 @@ function openPermissionSettings(kind) {
   if (PERMISSION_PANES[kind]) execFile('open', [`x-apple.systempreferences:com.apple.preference.security?${PERMISSION_PANES[kind]}`], () => {});
 }
 
+// Our own window to the front: an LSUIElement app has to activate itself first (untested on a Mac).
+function forceForeground() {
+  require('electron').app.focus({ steal: true });
+  return true;
+}
+
 module.exports = {
+  forceForeground,
   listWindows,
   focus,
   minimize: windowCmd('minimize'),

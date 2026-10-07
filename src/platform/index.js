@@ -9,6 +9,7 @@
 //                                  screen space); null when minimized / hidden / cloaked, the desktop /
 //                                  taskbar, or a window of excludePid
 //   handleOf(browserWindow) -> win              our own Electron window as a handle for focus()
+//   forceForeground(win) -> bool   (optional)   bring one of OUR windows to the front without synthetic input
 //   mediaKey(cmd)                cmd: 'prev' | 'play' | 'next'
 //   parseAccelerator(accel) -> spec | null      "Alt+Tab", "Alt+`", "Alt+\\" ... null = can't hook it
 //   hookKeys({ switchKey, takeSwitch(), onSwitch(back), onRelease(), binds: { accel: fn } }) -> unhook | null
