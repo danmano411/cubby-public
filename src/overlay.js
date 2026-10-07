@@ -326,15 +326,18 @@ function pressApp(e, r) {
   if (e.button !== 0 || drag || e.target.closest('button, input')) return;
   const denied = r.group.id === 'music'; // the music app lives in the strip
   if (r.kind === 'closed' && r.group.id === 'other') return; // closed apps only drag from a group
-  drag = { kind: 'app', r, info: appInfo(r), denied, x0: e.clientX, y0: e.clientY, active: false, pointerId: e.pointerId, srcKey: r.key };
+  drag = { kind: 'app', r, info: appInfo(r), denied, x0: e.clientX, y0: e.clientY, active: false, pointerId: e.pointerId, srcKey: r.key, grab: grabAt(e) };
   armPointer();
 }
 
 function pressGroup(e, g) {
   if (e.button !== 0 || drag || e.target.closest('input')) return;
-  drag = { kind: 'group', g, x0: e.clientX, y0: e.clientY, active: false, pointerId: e.pointerId };
+  drag = { kind: 'group', g, x0: e.clientX, y0: e.clientY, active: false, pointerId: e.pointerId, grab: grabAt(e) };
   armPointer();
 }
+
+// Where in the pressed element the pointer grabbed it: the ghost keeps that spot under the cursor.
+const grabAt = (e) => { const b = e.currentTarget.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
 
 function armPointer() {
   suppressClick = false; // a new press is a new gesture
@@ -366,7 +369,7 @@ function onDragMove(e) {
   }
   drag.x = e.clientX;
   drag.y = e.clientY;
-  drag.ghost.style.transform = `translate(${drag.x + 14}px, ${drag.y + 10}px)`;
+  drag.ghost.style.transform = `translate(${drag.x - drag.grab.x}px, ${drag.y - drag.grab.y}px)`;
   const bar = $groups.getBoundingClientRect();
   scrollDir = overZones(drag.x, drag.y) ? 0 : drag.x < bar.left + 48 ? -1 : drag.x > bar.right - 48 ? 1 : 0;
   updateTarget();
@@ -395,6 +398,9 @@ function startDrag() {
   }
   document.body.append(ghost);
   drag.ghost = ghost;
+  // The ghost is smaller than a row: keep the grab point inside it so it never drifts off the cursor.
+  const b = ghost.getBoundingClientRect();
+  drag.grab = { x: Math.min(drag.grab.x, b.width - 12), y: Math.min(drag.grab.y, b.height / 2) };
   scrollTick();
 }
 
