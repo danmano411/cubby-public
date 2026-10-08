@@ -35,6 +35,13 @@
       "package.json",
       "!**/*.test.js"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "danmano411",
+        "repo": "cubby-public"
+      }
+    ],
     "win": {
       "target": [
         {
@@ -95,6 +102,7 @@
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "koffi": "^3.3.2"
   },
   "devDependencies": {

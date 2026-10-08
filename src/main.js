@@ -9,6 +9,7 @@ const music = require('./music/index'); // not './music': that's the renderer's 
 const layout = require('./layout');
 const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingApps, allApps } = require('./model');
 const session = require('./session');
+const { initUpdater } = require('./updater');
 const edits = require('./features/edits');
 const pkg = require('../package.json');
 
@@ -771,6 +772,7 @@ ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('toast-close', () => toast.hide());
 
   setInterval(() => { push(); followPanels(); keepPanelsOnTop(); }, 1000); // followPanels also catches a window dragged to another display
+  initUpdater(log);
   const stopBadges = adapter.startBadgeWatcher(onBadges);
   app.on('will-quit', stopBadges);
   musicWin.webContents.once('did-finish-load', () => layoutPanels()); // the 1s push fills whichever loads later

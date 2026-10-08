@@ -1,8 +1,8 @@
 name: Release
 
 # Push a tag such as v0.1.0 (it must match the version in package.json) to build the unsigned
-# installers and attach them to a DRAFT pre-release. Nothing is published until you press
-# "Publish release" on GitHub.
+# installers and attach them to a DRAFT release. Nothing is published until you press
+# "Publish release" on GitHub. Not marked pre-release: Windows auto-update only follows full releases.
 on:
   push:
     tags: ['v*']
@@ -34,7 +34,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/Cubby-Setup-*.exe
+          # latest.yml (+ blockmap) is the feed the in-app updater reads; it must ship with the exe.
+          path: |
+            dist/Cubby-Setup-*.exe
+            dist/Cubby-Setup-*.exe.blockmap
+            dist/latest.yml
           if-no-files-found: error
 
   macos:
@@ -80,6 +84,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" artifacts/* \
-            --draft --prerelease --generate-notes \
+            --draft --generate-notes \
             --title "Cubby ${GITHUB_REF_NAME#v} (beta)" \
             --notes-file .github/release-notes.md

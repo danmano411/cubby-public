@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/logo.svg" alt="" width="128" height="128">
-</p>
-
 <h1 align="center">Cubby</h1>
 
 <p align="center">
@@ -17,7 +13,7 @@
 </p>
 
 <p align="center">
-  <b>Beta.</b> Windows is the tested platform. macOS is experimental and untested.
+  <b>Beta.</b> Windows is the tested platform. macOS is experimental.
 </p>
 
 ---
@@ -105,8 +101,15 @@ On macOS `Cmd+Tab` cannot be fully taken over by an app, so the default is `Opti
 | | Status | Notes |
 |---|---|---|
 | Windows 11 (x64) | **Beta** | The tested platform. Windows 10 should work but is not tested. |
-| macOS 13+ (Apple Silicon and Intel) | **Experimental, untested** | The code is written but has not been run on a real Mac yet. Expect rough edges and please report them. |
+| macOS 13+ (Apple Silicon and Intel) | **Experimental** | Runs on a real Mac, but has had very little testing. Expect rough edges and please report them. |
 | Linux | Not supported | |
+
+### Updates
+
+On Windows, Cubby 0.1.7 and later updates itself (older versions need one manual download): it checks for a new release when it starts and every few hours,
+downloads it in the background, and asks whether to restart now or install the next time it quits.
+On macOS it cannot (updating an unsigned app is blocked by macOS), so download the new `.dmg` from the
+[Releases page](https://github.com/danmano411/cubby-public/releases) when one comes out.
 
 ### macOS first run: permissions
 
