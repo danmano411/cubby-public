@@ -121,10 +121,13 @@ function onShellEvents(bw, handlers = {}) {
 // ---- Keys ----------------------------------------------------------------------------
 // The tap lives in the helper and must decide at once whether to swallow a key, so it can't ask
 // takeSwitch(); its answer is pushed to the helper whenever it changes instead.
+// Always handed to the helper, even when AXIsProcessTrusted() says no: that answer can be stale or
+// disagree with what tapCreate accepts, and the helper retries the tap every 5s until it's allowed.
+// onTap({ ok, error }) reports whether the tap actually exists.
 let perms = null;
-function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = () => {}, onRelease = () => {}, binds = {} }) {
+function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = () => {}, onRelease = () => {}, onTap = () => {}, binds = {} }) {
   if (!perms?.accessibility) perms = oneShot('--permissions') || {};
-  if (!perms.accessibility) return null; // the tap can't swallow keys without Accessibility
+  log('hookKeys', JSON.stringify({ accessibility: perms.accessibility, inputMonitoring: perms.inputMonitoring }));
   const sw = parseAccelerator(switchKey);
   const fns = new Map();
   const list = [];
@@ -141,7 +144,7 @@ function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = (
     helper.on('key', (m) => fns.get(m.id)?.()),
     helper.on('switch', (m) => onSwitch(!!m.back)),
     helper.on('release', () => onRelease()),
-    helper.on('tap', (m) => log('tap', JSON.stringify(m))),
+    helper.on('tap', (m) => { log('tap', JSON.stringify(m)); onTap(m); }),
   ];
   send();
   const poll = setInterval(() => {
