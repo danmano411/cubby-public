@@ -53,16 +53,22 @@ test('helper client: restarts after a crash and replays standing state', async (
   const seen = [];
   h.on('switch', (m) => seen.push(m.back));
   try {
+    // Waits for a ping to get through instead of sleeping: a slow CI runner can take longer than any
+    // fixed delay to respawn the process. The replay is written before the ping, so its event lands first.
+    const up = async () => {
+      for (const end = Date.now() + 5000; ; await new Promise((r) => setTimeout(r, 20))) {
+        try { return await h.request('ping'); } catch (e) { if (Date.now() > end) throw e; }
+      }
+    };
     h.hold('keys', 'hookKeys', { take: true });
-    await new Promise((r) => setTimeout(r, 300));
+    assert.strictEqual(await up(), 'pong');
     assert.deepStrictEqual(seen, [true], 'standing message sent once on start');
     await assert.rejects(h.request('crash'), /exited/);
-    await new Promise((r) => setTimeout(r, 400));
+    assert.strictEqual(await up(), 'pong');
     assert.deepStrictEqual(seen, [true, true], 'replayed after restart');
-    assert.strictEqual(await h.request('ping'), 'pong');
     h.drop('keys');
     await assert.rejects(h.request('crash'), /exited/);
-    await new Promise((r) => setTimeout(r, 400));
+    assert.strictEqual(await up(), 'pong');
     assert.deepStrictEqual(seen, [true, true], 'dropped state is not replayed');
   } finally { h.stop(); }
 });
