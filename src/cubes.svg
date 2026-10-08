@@ -1,7 +1,7 @@
 <!-- Generated from assets/logo.svg by scripts/render-icon.js; edit the source, not this. -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="64 64 896 896" role="img" aria-label="Cubby">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" role="img" aria-label="Cubby">
     <defs>
-    <g id="cube" fill="#A6B1E1" stroke="#1A2537" stroke-width="40" stroke-linejoin="round">
-      <path d="M0 0 L180.133 104 L0 208 L-180.133 104 Z"/>                      <path d="M-180.133 104 L0 208 L0 416 L-180.133 312 Z"/>                   <path d="M180.133 104 L0 208 L0 416 L180.133 312 Z"/>                   </g>
+    <g id="cube" fill="#A6B1E1" stroke="#1A2537" stroke-width="46" stroke-linejoin="round">
+      <path d="M0 0 L207.846 120 L0 240 L-207.846 120 Z"/>                      <path d="M-207.846 120 L0 240 L0 480 L-207.846 360 Z"/>                   <path d="M207.846 120 L0 240 L0 480 L207.846 360 Z"/>                   </g>
   </defs>
-    <use xlink:href="#cube" href="#cube" x="331.867" y="148"/>    <use xlink:href="#cube" href="#cube" x="692.133" y="148"/>    <use xlink:href="#cube" href="#cube" x="512" y="460"/>        <use xlink:href="#cube" href="#cube" x="512" y="252"/>      </svg>
+    <use xlink:href="#cube" href="#cube" x="304.154" y="92"/>     <use xlink:href="#cube" href="#cube" x="719.846" y="92"/>     <use xlink:href="#cube" href="#cube" x="512" y="452"/>        <use xlink:href="#cube" href="#cube" x="512" y="212"/>      </svg>

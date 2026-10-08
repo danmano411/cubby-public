@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cubby">
   <!--
-    Four isometric cubes on a navy tile.
-    Isometric: every receding edge is at 30 degrees. Cube edge e = 208, so one step across is
-    c = e*cos(30) = 180.133 and one step down is h = e*sin(30) = 104.
-    Tile 896 x 896 at (64, 64), corner radius 46. The cubes' bounding box (720.3 x 728, i.e. 4c x 3.5e)
-    is centred on the tile: 88 px either side, 84 px above and below.
+    Four isometric cubes on a navy tile that fills the whole square.
+    Isometric: every receding edge is at 30 degrees. Cube edge e = 240, so one step across is
+    c = e*cos(30) = 207.846 and one step down is h = e*sin(30) = 120.
+    Tile 1024 x 1024, corner radius 52 (5.1%). The cubes' bounding box (831.4 x 840, i.e. 4c x 3.5e)
+    is centred: 96.3 px either side, 92 px above and below.
     Cube anchors are the top corner of each cube's top face; painted back to front.
   -->
   <defs>
-    <g id="cube" fill="#A6B1E1" stroke="#1A2537" stroke-width="6" stroke-linejoin="round">
-      <path d="M0 0 L180.133 104 L0 208 L-180.133 104 Z"/>                <!-- top face -->
-      <path d="M-180.133 104 L0 208 L0 416 L-180.133 312 Z"/>             <!-- left face -->
-      <path d="M180.133 104 L0 208 L0 416 L180.133 312 Z"/>               <!-- right face -->
+    <g id="cube" fill="#A6B1E1" stroke="#1A2537" stroke-width="7" stroke-linejoin="round">
+      <path d="M0 0 L207.846 120 L0 240 L-207.846 120 Z"/>                <!-- top face -->
+      <path d="M-207.846 120 L0 240 L0 480 L-207.846 360 Z"/>             <!-- left face -->
+      <path d="M207.846 120 L0 240 L0 480 L207.846 360 Z"/>               <!-- right face -->
     </g>
   </defs>
-  <rect x="64" y="64" width="896" height="896" rx="46" fill="#1A2537"/>
-  <use xlink:href="#cube" href="#cube" x="331.867" y="148"/>  <!-- back left:  front cube - (c, h) -->
-  <use xlink:href="#cube" href="#cube" x="692.133" y="148"/>  <!-- back right: front cube + (c, -h) -->
-  <use xlink:href="#cube" href="#cube" x="512" y="460"/>      <!-- bottom:     front cube + (0, e) -->
-  <use xlink:href="#cube" href="#cube" x="512" y="252"/>      <!-- front, centred on x = 512 -->
+  <rect width="1024" height="1024" rx="52" fill="#1A2537"/>
+  <use xlink:href="#cube" href="#cube" x="304.154" y="92"/>   <!-- back left:  front cube - (c, h) -->
+  <use xlink:href="#cube" href="#cube" x="719.846" y="92"/>   <!-- back right: front cube + (c, -h) -->
+  <use xlink:href="#cube" href="#cube" x="512" y="452"/>      <!-- bottom:     front cube + (0, e) -->
+  <use xlink:href="#cube" href="#cube" x="512" y="212"/>      <!-- front, centred on x = 512 -->
 </svg>

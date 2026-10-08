@@ -5,15 +5,15 @@
 //   src/tray-icon[@Nx].png            the tray icon at each display scale
 //   src/cubes.svg                     the cubes without the tile, for the logos inside the app
 // Small sizes get thicker outlines: at 32 px the 6-unit outline would be 0.2 px and the cubes would
-// melt into one blob. Outline = max(6, 1.1 px at the target size), in the SVG's 1024-unit space.
+// melt into one blob. Outline = max(7, 1.1 px at the target size), in the SVG's 1024-unit space.
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'assets', 'logo.svg'), 'utf8');
-const stroke = (size) => Math.max(6, Math.round((1.1 * 1024) / size));
-const withStroke = (svg, w) => svg.replace(/stroke-width="6"/, `stroke-width="${w}"`);
+const stroke = (size) => Math.max(7, Math.round((1.1 * 1024) / size));
+const withStroke = (svg, w) => svg.replace(/stroke-width="7"/, `stroke-width="${w}"`);
 
 // One device pixel per CSS pixel, whatever the screen's scaling is.
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
@@ -69,10 +69,10 @@ app.whenReady().then(async () => {
   }
 
   // In-app logos are 16-56 px tiles drawn by CSS (so the listening cue can still recolour its tile):
-  // just the cubes, cropped to the tile, with an outline that survives 16 px.
-  const cubes = withStroke(SRC, 40)
+  // just the cubes (the tile is the whole square, so the CSS box is the tile), with an outline that survives 16 px.
+  const cubes = withStroke(SRC, 46)
     .replace(/<rect [^>]*\/>\n?/, '')
-    .replace('viewBox="0 0 1024 1024" width="1024" height="1024"', 'viewBox="64 64 896 896"')
+    .replace('viewBox="0 0 1024 1024" width="1024" height="1024"', 'viewBox="0 0 1024 1024"')
     .replace(/<!--[\s\S]*?-->\n?/g, '');
   write('src/cubes.svg', `<!-- Generated from assets/logo.svg by scripts/render-icon.js; edit the source, not this. -->\n${cubes}`);
   app.exit(0);
