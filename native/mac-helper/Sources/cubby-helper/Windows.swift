@@ -155,7 +155,14 @@ enum Windows {
   // AXFrontmost goes through Accessibility, which isn't subject to macOS 14's cooperative activation
   // (a background process can't always activate another app with NSRunningApplication.activate).
   static func focus(_ id: CGWindowID) -> Bool {
-    guard case let (app, el)? = find(id) else { return false }
+    guard case let (app, el)? = find(id) else {
+      // No AX element (Accessibility off, or the window moved): at least bring its app forward.
+      let pid = owner[id] ?? (CGWindowListCopyWindowInfo([.optionIncludingWindow], id) as? [[String: Any]])?.first
+        .map { pid_t(int($0[kCGWindowOwnerPID as String])) }
+      guard let p = pid, let app = NSRunningApplication(processIdentifier: p) else { return false }
+      if app.isHidden { app.unhide() }
+      return app.activate(options: [.activateIgnoringOtherApps])
+    }
     if app.isHidden { app.unhide() }
     if axBool(el, "AXMinimized") == true { axSet(el, "AXMinimized", kCFBooleanFalse) }
     axSet(axApp(app.processIdentifier), "AXFrontmost", kCFBooleanTrue)
