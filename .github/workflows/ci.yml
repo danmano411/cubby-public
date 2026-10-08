@@ -28,8 +28,17 @@ jobs:
 
       # PRIVACY_DENYLIST is a repository secret (one pattern per line). Forks and pull requests
       # from forks do not receive it, and the check then skips itself with a warning.
+      # In the private source repo (it has the export script) check what WOULD be published: export into a
+      # temp folder, which runs the check on the result. Its docs/ are private by design and never exported.
+      # In the public repo, check the repo itself.
       - name: Privacy check
-        run: node scripts/privacy-check.mjs .
+        shell: bash
+        run: |
+          if [ -f scripts/export-public.mjs ]; then
+            node scripts/export-public.mjs "$RUNNER_TEMP/public-export"
+          else
+            node scripts/privacy-check.mjs .
+          fi
         env:
           PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
 
