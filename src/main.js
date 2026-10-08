@@ -17,7 +17,9 @@ const pkg = require('../package.json');
 const SMOKE = process.argv.includes('--smoke');
 if (SMOKE) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'cubby-smoke-')));
 if (!app.requestSingleInstanceLock()) app.exit(0);
-const APP_ID = pkg.build.appId;
+// Same as package.json build.appId, but not read from there: electron-builder strips "build" from
+// the packaged package.json, so pkg.build is undefined in an installed copy.
+const APP_ID = 'app.cubby.desktop';
 app.setAppUserModelId(APP_ID); // names the startup entry (else "electron.app.Electron")
 
 const DATA = app.getPath('userData');
