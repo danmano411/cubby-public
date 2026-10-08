@@ -5,11 +5,11 @@
 <h1 align="center">Cubby</h1>
 
 <p align="center">
-  <a href="https://github.com/danmano411/cubby-public/blob/main/assets/demo.mp4">
+  <a href="https://github.com/danmano411/cubby-public/raw/main/assets/demo.mp4">
     <img src="assets/demo-preview.webp" alt="Cubby in 20 seconds: the flat Alt+Tab list snaps into Cubby's grouped tray, Tab steps through open apps, typing launches a closed one, and a ping lands on the side panel" width="720">
   </a>
 </p>
-<p align="center"><sub>Click for the full video with sound. Made-up apps, Cubby's real UI. Music: "Happy Beats / Business Moves" by <a href="https://ende.app/en">ende.app</a>.</sub></p>
+<p align="center"><sub>Click to download the full video with sound. Made-up apps, Cubby's real UI. Music: "Happy Beats / Business Moves" by <a href="https://ende.app/en">ende.app</a>.</sub></p>
 
 <p align="center">
   A grouped app tray and window switcher for Windows and macOS. One key shows every app you care
