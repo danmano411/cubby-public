@@ -7,7 +7,7 @@ const schema = require('./config/schema');
 const catalog = require('./config/catalog');
 const music = require('./music/index'); // not './music': that's the renderer's music.js
 const layout = require('./layout');
-const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingApps, allApps } = require('./model');
+const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingText, pingApps, allApps } = require('./model');
 const session = require('./session');
 const { initUpdater } = require('./updater');
 const edits = require('./features/edits');
@@ -432,13 +432,13 @@ function mediaPress(k) {
 
 // ---- Pings: taskbar flashes + taskbar badges ----------------------------------
 
-function pingToast(a, hwnd = 0, title = '') {
+function pingToast(a, hwnd = 0) {
   const now = Date.now();
   if (config.socialMode !== 'ping' || !pingIds().includes(a.id) || now - (lastPing[a.id] || 0) < 20000) return;
   lastPing[a.id] = now;
   const rc = runtime();
   const w = hwnd ? null : adapter.listWindows().find((x) => appForWindow(rc, x)?.id === a.id);
-  notify({ id: a.id, name: a.name, title: title || w?.title || 'New activity', hwnd: hwnd || w?.hwnd || 0, icon: icons[adapter.iconTarget(a)] });
+  notify({ id: a.id, name: a.name, title: pingText(badgeFor(a, badges || {})), hwnd: hwnd || w?.hwnd || 0, icon: icons[adapter.iconTarget(a)] });
 }
 
 function onFlash(hwnd) {
@@ -448,7 +448,7 @@ function onFlash(hwnd) {
   log('flash', a.id);
   pings[a.id] = true;
   push();
-  pingToast(a, hwnd, w.title);
+  pingToast(a, hwnd);
 }
 
 // A new or grown badge on a ping-group app is a ping. The first scan only sets the baseline.

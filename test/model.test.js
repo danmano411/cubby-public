@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { buildModel, titleCount, parseBadge, pingApps, appForWindow, badgeGrew } = require('../src/model');
+const { buildModel, titleCount, parseBadge, pingApps, appForWindow, badgeGrew, pingText } = require('../src/model');
 const schema = require('../src/config/schema');
 const catalog = require('../src/config/catalog');
 const music = require('../src/music/index');
@@ -119,3 +119,9 @@ console.log('model ok');
   assert.equal(badgeGrew(dot, dot), false);
   assert.equal(badgeGrew(c('2'), null), false);   // cleared
 }
+
+// pingText: the ping card says what we know (the count), never the focused window's title.
+assert.equal(pingText({ count: '3' }), '3 unread');
+assert.equal(pingText({ count: '9+' }), '9+ unread');
+assert.equal(pingText({ dot: true }), 'Unread messages');
+assert.equal(pingText(null), 'New message');

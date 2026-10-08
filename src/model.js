@@ -46,6 +46,14 @@ function badgeGrew(before, after) {
   return n(after) > n(before);
 }
 
+// The ping card's second line. Never the app's window title: for a chat app that is the conversation
+// you have OPEN (Discord: "#general | Server"), not the one that pinged, and Windows doesn't say which
+// one did. The unread count is the only true thing we know.
+function pingText(badge) {
+  if (badge?.count) return `${badge.count} unread`;
+  return badge?.dot ? 'Unread messages' : 'New message';
+}
+
 function badgeFor(app, badges) {
   const id = app.launch?.appId || app.launch?.bundleId;
   if (!id) return null;
@@ -106,4 +114,4 @@ const appForWindow = (config, w) => byPriority(config).find((a) => matches(a, w)
 // Apps in every ping group (pingGroup: true), in group order.
 const pingApps = (config) => config.groups.filter((g) => g.pingGroup).flatMap((g) => g.apps);
 
-module.exports = { badgeGrew, buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };
+module.exports = { badgeGrew, pingText, buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };
