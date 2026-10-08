@@ -682,7 +682,10 @@ cubby.on('setup:icons', (map) => {
     if (top != null) $('#cand-list').scrollTop = top;
   }, 200);
 });
-cubby.on('setup:permissions', (p) => { S.perms = p; if (S.ready && stepId() === 'welcome') { const top = page.scrollTop; render(); page.scrollTop = top; } });
+cubby.on('setup:permissions', (p) => {
+  if (JSON.stringify(p) === JSON.stringify(S.perms)) return; // render() asks again, so redrawing on an unchanged answer loops forever
+  S.perms = p;
+  if (S.ready && stepId() === 'welcome') { const top = page.scrollTop; render(); page.scrollTop = top; } });
 cubby.on('setup:saved', (r) => {
   S.saving = false;
   if (r.ok) {
