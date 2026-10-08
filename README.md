@@ -5,6 +5,11 @@
 <h1 align="center">Cubby</h1>
 
 <p align="center">
+  <video src="https://github.com/danmano411/cubby-public/raw/main/assets/demo.mp4" poster="https://github.com/danmano411/cubby-public/raw/main/assets/demo-poster.jpg" controls width="720"></video>
+</p>
+<p align="center"><sub>20 seconds, sound on. Made-up apps, Cubby's real UI. Music: "Happy Beats / Business Moves" by <a href="https://ende.app/en">ende.app</a>.</sub></p>
+
+<p align="center">
   A grouped app tray and window switcher for Windows and macOS. One key shows every app you care
   about, sorted into groups, open ones lit and closed ones dimmed. Jump to one, or launch it.
 </p>
