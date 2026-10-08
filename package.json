@@ -37,9 +37,7 @@
     ],
     "publish": [
       {
-        "provider": "github",
-        "owner": "danmano411",
-        "repo": "cubby-public"
+        "provider": "github"
       }
     ],
     "win": {
