@@ -100,8 +100,10 @@ function snapshot() {
     else if (t) wantIcon(t);
   }
   const tints = Object.fromEntries(allApps(rc).filter((a) => a.tint).map((a) => [a.id, a.tint]));
-  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) } };
+  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() } };
 }
+
+const quitOnDelete = () => process.platform === 'darwin' && config.deleteKey?.macQuit !== false;
 
 // Icons come from the platform (shell-rendered on Windows), keyed by launch target, so closed and
 // Store apps get real icons too. Cached in icons.json; one batch per miss-burst.
@@ -500,6 +502,24 @@ function appContext({ hwnd, ...info }) {
   Menu.buildFromTemplate(items).popup({ window: overlay, callback: () => { holdOpen = false; overlay.focus(); } });
 }
 
+// Delete key on a row. hwnds come from the renderer: numbers only. Mac quits the app (polite), falling back to close.
+function closeRow(hwnds) {
+  if (!Array.isArray(hwnds) || !hwnds.every(Number.isFinite)) return;
+  const wins = adapter.listWindows({ excludePid: process.pid });
+  const quit = quitOnDelete();
+  const quitByPid = new Map();
+  const results = hwnds.flatMap((hwnd) => {
+    const w = wins.find((x) => x.hwnd === hwnd);
+    if (!w) return []; // unknown or our own window: leave it
+    if (quit && !quitByPid.has(w.pid)) quitByPid.set(w.pid, adapter.quitApp(w, { force: false }));
+    if (quit && quitByPid.get(w.pid)) return [{ hwnd, quit: true }];
+    adapter.close(hwnd);
+    return [{ hwnd, quit: false }];
+  });
+  log('close-row', results);
+  setTimeout(push, 400);
+}
+
 // ---- Keyboard hook (re)install -------------------------------------------------
 
 let unhookKeys = null;
@@ -768,6 +788,7 @@ ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('open-tray', () => showOverlay());
   ipcMain.on('open-all', openAll);
   ipcMain.on('close-all', closeAll);
+  ipcMain.on('close-row', (_, p) => closeRow(p?.hwnds));
   ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) adapter.focus(hwnd); });
   ipcMain.on('toast-close', () => toast.hide());
 

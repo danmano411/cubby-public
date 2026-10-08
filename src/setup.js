@@ -346,6 +346,9 @@ function keysPage() {
     out.push(toggleRow('Use Cmd+Tab instead (experimental)', 'Option+Tab is the safe default. Cmd+Tab is macOS\'s own switcher, and Cubby can only take it over with a keyboard tap.', cmd, (on) => setKey('switch', on ? 'Cmd+Tab' : S.defaults.keys.switch)));
   }
   out.push(row('search'));
+  const dk = S.draft.deleteKey || (S.draft.deleteKey = clone(S.defaults.deleteKey));
+  out.push(toggleRow('Ask before Delete closes an app', 'Hover an app in Cubby and press Delete. On: press Delete again (or Enter) to confirm.', !!dk.confirm, (on) => { dk.confirm = on; renderFoot(); }));
+  if (isMac()) out.push(toggleRow('Delete quits the app', 'On: the whole app quits. Off: only that window closes, like its red button.', !!dk.macQuit, (on) => { dk.macQuit = on; renderFoot(); }));
   out.push(el('h3', null, 'Music keys'));
   if (S.draft.music.provider === 'none') out.push(el('p', { class: 'note', style: 'margin:-4px 0 8px' }, 'These do nothing while the music player is set to None.'));
   for (const n of ['musicPrev', 'musicPlay', 'musicNext']) out.push(row(n));

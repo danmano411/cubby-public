@@ -134,6 +134,13 @@ test('mergeDraft takes only what setup owns and the result validates', () => {
   assert.equal(current.groups.length, 0, 'the live config is not mutated');
 });
 
+test('mergeDraft copies deleteKey booleans only', () => {
+  const cur = schema.load(JSON.stringify(schema.DEFAULTS)).config;
+  assert.deepStrictEqual(mergeDraft(cur, { deleteKey: { confirm: false, macQuit: false } }).deleteKey, { confirm: false, macQuit: false });
+  assert.deepStrictEqual(mergeDraft(cur, { deleteKey: { confirm: 'no', macQuit: false } }).deleteKey, { confirm: true, macQuit: false });
+  assert.deepStrictEqual(mergeDraft(cur, {}).deleteKey, { confirm: true, macQuit: true });
+});
+
 test('mergeDraft + validate catch a duplicate key and a repeated app', () => {
   const cur = schema.load(JSON.stringify(schema.DEFAULTS)).config;
   const dup = mergeDraft(cur, { keys: { ...cur.keys, search: 'Alt+Tab' } });

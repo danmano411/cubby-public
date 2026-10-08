@@ -5,6 +5,8 @@ const $music = document.getElementById('music');
 let model = null;
 let cols = [];        // [[row]] per visible group, in fixed layout order
 let sel = null;       // key of the highlighted row
+let armed = null;     // key of the row waiting for a second Delete (docs/09-delete-to-close-plan.md)
+let fallbackSel = []; // where the highlight goes if its row disappears (set when a row is closed)
 let foreground = 0;   // hwnd that was active when the tray opened ("you are here")
 // Hover only takes the highlight after a real mouse move, not when the tray pops up under a still cursor.
 let mouseMoved = false;
@@ -51,7 +53,9 @@ const pos = () => {
 
 function render() {
   buildCols();
-  if (!allRows().some((r) => r.key === sel)) sel = allRows()[0]?.key ?? null;
+  const has = (k) => allRows().some((r) => r.key === k);
+  if (!has(sel)) sel = fallbackSel.find(has) ?? allRows()[0]?.key ?? null;
+  if (armed !== sel) armed = null; // its row went away
   $groups.replaceChildren();
   const dnd = model.socialMode === 'dnd';
   for (const col of cols) {
@@ -103,8 +107,9 @@ function rowEl(r) {
     const sub = r.kind === 'closed' ? 'Not open · Enter to launch'
       : r.kind === 'multi' ? `${r.app.windows.length} windows`
       : cleanTitle(r.win.title, r.app.name);
-    if (sub && sub !== r.app.name) text.append(h('div', 'sub', sub));
+    if (sub && sub !== r.app.name && r.key !== armed) text.append(h('div', 'sub', sub));
   }
+  if (r.key === armed) { el.classList.add('armed'); text.append(h('div', 'sub', armText(r))); }
   el.append(text);
   if (r.win && r.win.hwnd === foreground && r.kind !== 'multi') el.append(h('span', 'here', 'here'));
   if (r.kind !== 'sub') {
@@ -124,6 +129,7 @@ function rowEl(r) {
 }
 
 function markSel() {
+  if (armed && armed !== sel) disarmRow(); // highlight moved off the armed row
   for (const el of document.querySelectorAll('[data-key]')) el.classList.toggle('sel', el.dataset.key === sel);
   document.querySelector('.row.sel')?.scrollIntoView({ block: 'nearest' });
 }
@@ -139,12 +145,13 @@ function renderMusic() {
   $music.onpointerdown = (e) => pressApp(e, r); // can be picked up, but not dropped anywhere
   $music.classList.toggle('sel', r.key === sel);
   $music.classList.toggle('dim', !isMatch(r));
+  $music.classList.toggle('armed', r.key === armed);
   $music.onmousemove = () => { if (mouseMoved && sel !== r.key) { sel = r.key; markSel(); } };
   $music.append(iconEl(m.id, m.name, model.icons, model.tints));
   const now = h('div', 'now');
   const [artist, ...song] = (m.nowPlaying || '').split(' - ');
   now.append(h('div', 'name', m.nowPlaying ? song.join(' - ') || artist : `${m.name} · ${m.running ? 'paused' : 'not open'}`));
-  now.append(h('div', 'sub', m.nowPlaying ? artist : m.running ? 'Nothing playing' : 'Click to open'));
+  now.append(h('div', 'sub', r.key === armed ? armText(r) : m.nowPlaying ? artist : m.running ? 'Nothing playing' : 'Click to open'));
   now.onclick = () => (m.running ? cubby.send('activate', m.windows[0].hwnd) : cubby.send('launch', m.id));
   $music.append(now);
   if (m.running) {
@@ -193,13 +200,14 @@ function move(dc, dr) {
 
 document.addEventListener('keydown', (e) => {
   const k = e.key;
-  if (k === 'Escape') { if (q()) { $filter.value = ''; render(); } else cubby.send('hide'); }
+  if (k === 'Escape') { if (armed) disarmRow(); else if (q()) { $filter.value = ''; render(); } else cubby.send('hide'); }
   else if (k === 'Tab') cycle(e.shiftKey ? -1 : 1);
   else if (k === 'ArrowRight') move(1, 0);
   else if (k === 'ArrowLeft') move(-1, 0);
   else if (k === 'ArrowDown') move(0, 1);
   else if (k === 'ArrowUp') move(0, -1);
-  else if (k === 'Enter') goSelected();
+  else if (k === 'Enter') { if (armed) closeSelected(); else goSelected(); }
+  else if (isDeleteKey(e)) closeSelected();
   else return;
   e.preventDefault();
 });
@@ -209,7 +217,41 @@ function goSelected() {
   if (r) go(r);
 }
 
+// ---- Delete closes the highlighted app (docs/09-delete-to-close-plan.md) -------------------
+// Only when the search box has nothing to delete that way. mac's "delete" key sends Backspace.
+const isMac = /Mac/.test(navigator.platform);
+// A held key (autorepeat) or a modified one (Cmd/Option+Backspace edit text) never closes anything.
+const isDeleteKey = (e) => !e.repeat && !(e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) && ((e.key === 'Delete' && $filter.selectionStart === $filter.value.length && $filter.selectionEnd === $filter.value.length)
+  || (isMac && e.key === 'Backspace' && !$filter.value));
+const deleteKey = () => model?.deleteKey || { confirm: true, quit: false };
+const armText = (r) => `${deleteKey().quit ? `Quit ${r.app.name}?` : 'Close?'} Delete again or Enter`;
+let armTimer;
+function closeSelected() {
+  const r = allRows().find((x) => x.key === sel);
+  if (!r || r.kind === 'closed') return;
+  clearTimeout(armTimer);
+  if (armed === r.key || !deleteKey().confirm) {
+    armed = null;
+    // When the row goes away, stay where you were (the app's own row, else a neighbour), not the top-left row.
+    const col = cols.find((c) => c.includes(r));
+    const i = col.indexOf(r);
+    fallbackSel = [`app:${r.app.id}`, col[i + 1]?.key, col[i - 1]?.key];
+    cubby.send('close-row', { hwnds: r.kind === 'multi' ? r.app.windows.map((w) => w.hwnd) : [r.win.hwnd] });
+  } else {
+    armed = r.key;
+    armTimer = setTimeout(disarmRow, 3000);
+  }
+  render();
+}
+function disarmRow() {
+  clearTimeout(armTimer);
+  if (!armed) return;
+  armed = null;
+  if (rendersHeld()) pendingRender = true; else render();
+}
+
 $filter.addEventListener('input', () => {
+  armed = null; // typing disarms
   // App name beats window title (a chat app showing "#announcements" must not win "nt" over an app named nt),
   // then open windows beat closed apps, then layout order (sort is stable).
   const name = (r) => { const n = r.app.name.toLowerCase(); return n.startsWith(q()) ? 0 : n.includes(q()) ? 1 : 2; };
@@ -245,6 +287,9 @@ for (const b of document.querySelectorAll('#panels button')) {
 
 cubby.on('open', (m) => {
   disarm();
+  clearTimeout(armTimer);
+  armed = null;
+  fallbackSel = [];
   editsReset();
   model = m;
   foreground = m.foreground;
@@ -280,7 +325,7 @@ function setHints(alt) {
   const mod = sw.mods || 'Alt';
   document.getElementById('hints').innerHTML = alt
     ? `${kbd(sw.key || 'Tab')} next ${kbd('Shift')}${kbd(sw.key || 'Tab')} back · let go of ${kbd(mod)} to switch${search.key && search.mods === mod ? ` · ${kbd(search.key)} to search instead` : ''}`
-    : `type to search ${kbd('←')}${kbd('→')} groups ${kbd('↑')}${kbd('↓')} apps ${kbd('Enter')} go ${kbd('Esc')} close`;
+    : `type to search ${kbd('←')}${kbd('→')} groups ${kbd('↑')}${kbd('↓')} apps ${kbd('Enter')} go ${kbd('Del')} ${deleteKey().quit ? 'quit' : 'close'} ${kbd('Esc')} hide`;
   $filter.placeholder = alt ? `Let go of ${mod} to switch` : 'Type to jump…';
   const v = model.voice;
   document.getElementById('open-all').title = `Launch every app in your groups that isn't open${v ? ` (voice: "${v.openAll}")` : ''}`;

@@ -142,6 +142,7 @@ function mergeDraft(current, draft) {
   }
   const label = typeof d.labels?.closeAll === 'string' ? d.labels.closeAll.trim() : '';
   if (label) next.labels = { ...next.labels, closeAll: label };
+  for (const k of ['confirm', 'macQuit']) if (typeof d.deleteKey?.[k] === 'boolean') next.deleteKey = { ...next.deleteKey, [k]: d.deleteKey[k] };
   next.setupComplete = true;
   return next;
 }

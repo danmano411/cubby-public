@@ -21,6 +21,7 @@ const DEFAULTS = {
     thresholds: { wake: 0.6, openAll: 0.75, closeAll: 0.8 },
   },
   labels: { closeAll: 'Close all' }, // wording of the Close All button / menu item / confirm
+  deleteKey: { confirm: true, macQuit: true }, // Delete closes the hovered app: ask first; on mac quit the app (not just the window)
   apps: {}, // per-app overrides by id: name, tint, badgeOffset, launch fields
 };
 // Group ids the tray uses for its own columns: Other, the music strip and the "+ New group" drop zone.
@@ -61,6 +62,7 @@ function withDefaults(c) {
     music: { ...d.music, ...c.music },
     voice: { ...d.voice, ...v, commands: { ...d.voice.commands, ...v.commands }, thresholds: { ...d.voice.thresholds, ...v.thresholds } },
     labels: { ...d.labels, ...c.labels },
+    deleteKey: c.deleteKey != null && !isObj(c.deleteKey) ? c.deleteKey : { ...d.deleteKey, ...c.deleteKey }, // a non-object is left for validate
     apps: { ...c.apps },
   };
 }
@@ -163,6 +165,10 @@ function validate(c, platform) {
   checkTitle('music', c.music?.match);
   checkTitle('music.app', c.music?.app?.match);
   if (c.labels != null && (!isObj(c.labels) || (c.labels.closeAll != null && (typeof c.labels.closeAll !== 'string' || !c.labels.closeAll.trim())))) err('labels.closeAll must be a non-empty string');
+  if (c.deleteKey != null) {
+    if (!isObj(c.deleteKey)) err('deleteKey must be an object');
+    else for (const k of ['confirm', 'macQuit']) if (c.deleteKey[k] != null && typeof c.deleteKey[k] !== 'boolean') err(`deleteKey.${k} must be true or false`);
+  }
   const v = c.voice;
   if (typeof v.enabled !== 'boolean') err('voice.enabled must be true or false');
   if (typeof v.wakeWord !== 'string' || !v.wakeWord.trim()) err('voice.wakeWord must be a word');

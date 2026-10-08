@@ -173,6 +173,13 @@ assert.equal(c.labels.closeAll, 'Kill all', 'v1 users keep the Kill wording');
 assert.match(bad({ labels: { closeAll: '  ' } }).join(), /labels\.closeAll/);
 assert.match(bad({ labels: { closeAll: 5 } }).join(), /labels\.closeAll/);
 assert.deepStrictEqual(bad({ labels: { closeAll: 'Kill all' } }), []);
+// ---- deleteKey ----
+assert.deepStrictEqual(schema.DEFAULTS.deleteKey, { confirm: true, macQuit: true });
+assert.deepStrictEqual(schema.withDefaults({ keys: {}, deleteKey: { confirm: false } }).deleteKey, { confirm: false, macQuit: true }, 'merged one level');
+assert.match(bad({ deleteKey: { confirm: 'yes' } }).join(), /deleteKey\.confirm/);
+assert.match(bad({ deleteKey: { macQuit: 1 } }).join(), /deleteKey\.macQuit/);
+assert.match(bad({ deleteKey: true }).join(), /deleteKey must be an object/);
+assert.deepStrictEqual(bad({ deleteKey: { confirm: false, macQuit: false } }), []);
 assert.equal(schema.closeVerb('Kill all'), 'Kill');
 assert.equal(schema.closeVerb('  Close all '), 'Close');
 assert.equal(schema.closeVerb(''), 'Close');

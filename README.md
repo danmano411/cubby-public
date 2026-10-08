@@ -88,6 +88,7 @@ These are the defaults. Every key can be changed in setup or in your config.
 | `Tab` / `Shift+Tab` | Next / previous open app. |
 | Arrow keys | Move around the groups. |
 | `Enter` | Switch to the selected app, or launch it if it is closed. |
+| `Delete` | Close the highlighted app's window. Press it again (or `Enter`) to confirm; Settings can turn the prompt off. On a Mac the delete key quits the app instead (Settings can make it close only the window). |
 | `Esc` | Clear the search, then close the tray. |
 | `Alt+[` / `Alt+\` / `Alt+]` | Music: previous / play-pause / next. |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo a change to your groups, while the tray is open. |
