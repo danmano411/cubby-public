@@ -9,7 +9,7 @@
 
 header { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
-.logo { width: 16px; height: 16px; border-radius: 2px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
+.logo { width: 28px; height: 28px; border-radius: 3px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
 #filter { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--text); font: inherit; outline: none; }
 #filter:focus { border-color: rgba(166, 177, 225, 0.55); }
 .session { display: flex; gap: 6px; }

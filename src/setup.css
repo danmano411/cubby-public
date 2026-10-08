@@ -13,7 +13,7 @@ input[type="text"], input[type="search"] { user-select: text; -webkit-user-selec
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
 .brand #mode-title { color: var(--muted); font-weight: 500; margin-left: 4px; }
 .brand #mode-title::before { content: "/"; margin-right: 8px; color: var(--faint); }
-.logo { width: 16px; height: 16px; border-radius: 2px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
+.logo { width: 28px; height: 28px; border-radius: 3px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
 .win-btns { display: flex; height: 100%; -webkit-app-region: no-drag; }
 .win-btns button { width: 46px; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
 .win-btns button:hover { background: var(--panel-2); color: var(--text); }
