@@ -12,10 +12,8 @@
       animation: in 0.16s ease-out; }
     @keyframes in { from { opacity: 0; transform: scale(0.94); } }
     .mark { position: relative; width: 84px; height: 84px; }
-    .logo { position: absolute; inset: 0; border-radius: 22px; background:
-      linear-gradient(var(--on-accent) 0 0) 16px 16px / 22px 22px no-repeat, linear-gradient(var(--on-accent) 0 0) 46px 16px / 22px 22px no-repeat,
-      linear-gradient(var(--on-accent) 0 0) 16px 46px / 22px 22px no-repeat, linear-gradient(var(--on-accent) 0 0) 46px 46px / 22px 22px no-repeat, var(--accent); }
-    .ring { position: absolute; inset: -6px; border-radius: 28px; border: 2px solid var(--accent); opacity: 0; }
+    .logo { position: absolute; inset: 0; border-radius: 4px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
+    .ring { position: absolute; inset: -6px; border-radius: 10px; border: 2px solid var(--accent); opacity: 0; }
     .listening .ring { animation: pulse 1.4s ease-out infinite; }
     .listening .ring + .ring { animation-delay: 0.7s; }
     @keyframes pulse { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.35); } }

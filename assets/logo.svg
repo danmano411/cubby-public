@@ -1,7 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cubby">
-  <rect width="1024" height="1024" rx="232" fill="#A6B1E1"/>
-  <rect x="176" y="176" width="304" height="304" rx="64" fill="#16171D"/>
-  <rect x="544" y="176" width="304" height="304" rx="64" fill="#16171D"/>
-  <rect x="176" y="544" width="304" height="304" rx="64" fill="#16171D"/>
-  <rect x="544" y="544" width="304" height="304" rx="64" fill="#16171D"/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cubby">
+  <!--
+    Four isometric cubes on a navy tile.
+    Isometric: every receding edge is at 30 degrees. Cube edge e = 208, so one step across is
+    c = e*cos(30) = 180.133 and one step down is h = e*sin(30) = 104.
+    Tile 896 x 896 at (64, 64), corner radius 46. The cubes' bounding box (720.3 x 728, i.e. 4c x 3.5e)
+    is centred on the tile: 88 px either side, 84 px above and below.
+    Cube anchors are the top corner of each cube's top face; painted back to front.
+  -->
+  <defs>
+    <g id="cube" fill="#A6B1E1" stroke="#1A2537" stroke-width="6" stroke-linejoin="round">
+      <path d="M0 0 L180.133 104 L0 208 L-180.133 104 Z"/>                <!-- top face -->
+      <path d="M-180.133 104 L0 208 L0 416 L-180.133 312 Z"/>             <!-- left face -->
+      <path d="M180.133 104 L0 208 L0 416 L180.133 312 Z"/>               <!-- right face -->
+    </g>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="46" fill="#1A2537"/>
+  <use xlink:href="#cube" href="#cube" x="331.867" y="148"/>  <!-- back left:  front cube - (c, h) -->
+  <use xlink:href="#cube" href="#cube" x="692.133" y="148"/>  <!-- back right: front cube + (c, -h) -->
+  <use xlink:href="#cube" href="#cube" x="512" y="460"/>      <!-- bottom:     front cube + (0, e) -->
+  <use xlink:href="#cube" href="#cube" x="512" y="252"/>      <!-- front, centred on x = 512 -->
 </svg>

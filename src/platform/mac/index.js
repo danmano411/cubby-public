@@ -250,6 +250,7 @@ function forceForeground() {
 
 module.exports = {
   forceForeground,
+  keepOnTop: () => false, // macOS keeps the floating level; nothing to repair
   listWindows,
   focus,
   minimize: windowCmd('minimize'),

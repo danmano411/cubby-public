@@ -24,6 +24,7 @@ const GetForegroundWindow = user32.func('intptr_t __stdcall GetForegroundWindow(
 const GetWindowRect = user32.func('bool __stdcall GetWindowRect(intptr_t hwnd, void *rect)');
 const SetForegroundWindow = user32.func('bool __stdcall SetForegroundWindow(intptr_t hwnd)');
 const BringWindowToTop = user32.func('bool __stdcall BringWindowToTop(intptr_t hwnd)');
+const SetWindowPos = user32.func('bool __stdcall SetWindowPos(intptr_t hwnd, intptr_t after, int x, int y, int cx, int cy, uint32_t flags)');
 const ShowWindow = user32.func('bool __stdcall ShowWindow(intptr_t hwnd, int cmd)');
 const PostMessageW = user32.func('bool __stdcall PostMessageW(intptr_t hwnd, uint32_t msg, uintptr_t w, intptr_t l)');
 const keybd_event = user32.func('void __stdcall keybd_event(uint8_t vk, uint8_t scan, uint32_t flags, uintptr_t extra)');
@@ -45,6 +46,8 @@ const GetModuleHandleW = kernel32.func('intptr_t __stdcall GetModuleHandleW(str1
 const GW_OWNER = 4;
 const GWL_EXSTYLE = -20;
 const WS_EX_TOOLWINDOW = 0x80;
+const WS_EX_TOPMOST = 0x08;
+const GW_HWNDPREV = 3;
 const WS_EX_NOACTIVATE = 0x08000000;
 const DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 const DWMWA_CLOAKED = 14;
@@ -136,6 +139,19 @@ function focus(hwnd) {
 // unassigned key first makes us that source. Not an Alt tap like focus() uses: that would end an
 // Alt+Tab session early. (AttachThreadInput also works but makes the window flap focus/blur on
 // detach, leaving Electron thinking it is unfocused.) Returns whether the window ended up in front.
+// Our always-on-top panels can end up BELOW ordinary windows while keeping WS_EX_TOPMOST: Windows
+// reported them visible and topmost, yet 8 maximized apps sat above them in z-order, so nothing of
+// them showed (measured 2026-10-07; re-asserting HWND_TOPMOST brought them back). Toggling doesn't
+// help (show keeps the old z-position). Returns true when it had to lift the window.
+function keepOnTop(hwnd) {
+  for (let w = GetWindow(hwnd, GW_HWNDPREV); w; w = GetWindow(w, GW_HWNDPREV)) {
+    if (!IsWindowVisible(w) || isCloaked(w) || Number(GetWindowLongPtrW(w, GWL_EXSTYLE)) & WS_EX_TOPMOST) continue;
+    SetWindowPos(hwnd, -1 /* HWND_TOPMOST */, 0, 0, 0, 0, 0x13 /* SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE */);
+    return true;
+  }
+  return false;
+}
+
 function forceForeground(hwnd) {
   if (Number(GetForegroundWindow()) === hwnd) return true;
   maskModifierRelease();
@@ -354,6 +370,7 @@ module.exports = {
   listWindows,
   focus,
   forceForeground,
+  keepOnTop,
   minimize: (hwnd) => ShowWindow(hwnd, SW_MINIMIZE),
   maximize: (hwnd) => ShowWindow(hwnd, 3 /* SW_MAXIMIZE */),
   close: (hwnd) => PostMessageW(hwnd, WM_CLOSE, 0, 0),

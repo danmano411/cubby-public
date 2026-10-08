@@ -13,9 +13,7 @@ input[type="text"], input[type="search"] { user-select: text; -webkit-user-selec
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
 .brand #mode-title { color: var(--muted); font-weight: 500; margin-left: 4px; }
 .brand #mode-title::before { content: "/"; margin-right: 8px; color: var(--faint); }
-.logo { width: 16px; height: 16px; border-radius: 4px; background:
-  linear-gradient(var(--on-accent) 0 0) 3px 3px / 4px 4px no-repeat, linear-gradient(var(--on-accent) 0 0) 9px 3px / 4px 4px no-repeat,
-  linear-gradient(var(--on-accent) 0 0) 3px 9px / 4px 4px no-repeat, linear-gradient(var(--on-accent) 0 0) 9px 9px / 4px 4px no-repeat, var(--accent); }
+.logo { width: 16px; height: 16px; border-radius: 2px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
 .win-btns { display: flex; height: 100%; -webkit-app-region: no-drag; }
 .win-btns button { width: 46px; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
 .win-btns button:hover { background: var(--panel-2); color: var(--text); }
@@ -62,9 +60,7 @@ h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacin
 
 /* welcome */
 .hero { display: flex; align-items: center; gap: 18px; margin: 8px 0 22px; }
-.hero .logo { width: 56px; height: 56px; border-radius: 14px; background:
-  linear-gradient(var(--on-accent) 0 0) 11px 11px / 14px 14px no-repeat, linear-gradient(var(--on-accent) 0 0) 31px 11px / 14px 14px no-repeat,
-  linear-gradient(var(--on-accent) 0 0) 11px 31px / 14px 14px no-repeat, linear-gradient(var(--on-accent) 0 0) 31px 31px / 14px 14px no-repeat, var(--accent); }
+.hero .logo { width: 56px; height: 56px; border-radius: 3px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
 .hero h1 { font-size: 26px; }
 .points { list-style: none; display: grid; gap: 10px; max-width: 640px; margin-bottom: 8px; }
 .points li { display: flex; gap: 12px; padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; }

@@ -35,6 +35,17 @@ function adjust(badge, offset = 0) {
 
 // An app's badges, matched by its launch AppID (Windows) or bundle id (mac); prefix match covers
 // Teams' "...!MSTeams.Work".
+// Is `after` news compared to `before`? A badge that appears or grows is; one that shrinks or stays
+// isn't (reading messages elsewhere lowers it, and that must not ping). "9+" counts as more than 9.
+function badgeGrew(before, after) {
+  if (!after) return false;
+  if (!before) return true;
+  if (!after.count) return false;
+  if (!before.count) return true;
+  const n = (b) => parseInt(b.count, 10) + (b.count.endsWith('+') ? 0.5 : 0);
+  return n(after) > n(before);
+}
+
 function badgeFor(app, badges) {
   const id = app.launch?.appId || app.launch?.bundleId;
   if (!id) return null;
@@ -95,4 +106,4 @@ const appForWindow = (config, w) => byPriority(config).find((a) => matches(a, w)
 // Apps in every ping group (pingGroup: true), in group order.
 const pingApps = (config) => config.groups.filter((g) => g.pingGroup).flatMap((g) => g.apps);
 
-module.exports = { buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };
+module.exports = { badgeGrew, buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };

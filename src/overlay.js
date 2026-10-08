@@ -80,6 +80,7 @@ function render() {
   document.getElementById('panel').append(zonesEl(!$groups.querySelector('[data-group="other"]')));
   renderMusic();
   for (const b of document.querySelectorAll('#modes button')) b.classList.toggle('on', b.dataset.mode === model.socialMode);
+  document.getElementById('voice').classList.toggle('on', !!model.voice); // voiceHints() is null while voice is off
   for (const b of document.querySelectorAll('#panels button')) {
     b.classList.toggle('on', !!model.panels[b.dataset.panel]);
     b.hidden = b.dataset.panel === 'music' && !model.music;
@@ -236,6 +237,7 @@ function disarm() { clearTimeout(closeTimer); $close.classList.remove('armed'); 
 for (const b of document.querySelectorAll('#modes button')) {
   b.onclick = () => { cubby.send('social-mode', b.dataset.mode); setTimeout(() => $filter.focus(), 0); };
 }
+document.getElementById('voice').onclick = () => { cubby.send('voice', !model.voice); setTimeout(() => $filter.focus(), 0); };
 // Side panels toggle independently: none / socials / music / both.
 for (const b of document.querySelectorAll('#panels button')) {
   b.onclick = () => { cubby.send('panel', b.dataset.panel, !model.panels[b.dataset.panel]); setTimeout(() => $filter.focus(), 0); };

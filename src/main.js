@@ -7,7 +7,7 @@ const schema = require('./config/schema');
 const catalog = require('./config/catalog');
 const music = require('./music/index'); // not './music': that's the renderer's music.js
 const layout = require('./layout');
-const { buildModel, findApp, appForWindow, badgeFor, pingApps, allApps } = require('./model');
+const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingApps, allApps } = require('./model');
 const session = require('./session');
 const edits = require('./features/edits');
 const pkg = require('../package.json');
@@ -330,6 +330,7 @@ function setVoice(on) {
   stopVoice();
   if (on) startVoice();
   buildTrayMenu();
+  push();
 }
 
 // ---- Socials (apps in ping groups) -----------------------------------------------
@@ -454,8 +455,7 @@ function onBadges(next) {
   log('badges', JSON.stringify(next));
   if (prev) {
     for (const a of pingApps(runtime())) {
-      const after = badgeFor(a, next);
-      if (after && JSON.stringify(after) !== JSON.stringify(badgeFor(a, prev))) pingToast(a);
+      if (badgeGrew(badgeFor(a, prev), badgeFor(a, next))) pingToast(a);
     }
   }
   push();
@@ -538,21 +538,19 @@ function afterWake() {
   installHook();
   setTimeout(relayoutAll, 2000); // displays take a moment to settle after resume
 }
+// Panels that slipped under ordinary windows (still "visible" and "topmost", but buried) go back on
+// top. Checked every second, so it doesn't matter which event (wake, screen on, unlock) buried them.
+function keepPanelsOnTop() {
+  for (const w of [dock, musicWin, toast]) {
+    if (w.isVisible() && adapter.keepOnTop(adapter.handleOf(w))) log('lifted', w.getTitle());
+  }
+}
 
 // ---- Tray icon ---------------------------------------------------------------
 
 function trayImage() {
-  // 32x32 BGRA: rounded tile with a 2x2 grid of cubbies.
-  const S = 32, buf = Buffer.alloc(S * S * 4);
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const inTile = Math.hypot(Math.max(0, Math.abs(x - 15.5) - 9), Math.max(0, Math.abs(y - 15.5) - 9)) < 6;
-    const hole = [[7, 14], [17, 24]].some(([a, b]) => x >= a && x <= b) && [[7, 14], [17, 24]].some(([a, b]) => y >= a && y <= b);
-    const i = (y * S + x) * 4;
-    if (!inTile) continue;
-    const [r, g, b] = hole ? [22, 23, 29] : [166, 177, 225]; // periwinkle tile, dark cubbies
-    buf[i] = b; buf[i + 1] = g; buf[i + 2] = r; buf[i + 3] = 255;
-  }
-  return nativeImage.createFromBitmap(buf, { width: S, height: S });
+  // tray-icon.png is 16 px; Electron picks tray-icon@1.5x/@2x/@2.5x/@3x for the display's scaling.
+  return nativeImage.createFromPath(path.join(__dirname, 'tray-icon.png'));
 }
 
 function buildTrayMenu() {
@@ -761,6 +759,7 @@ app.whenReady().then(() => {
   ipcMain.on('media', (_, k) => mediaPress(k));
   ipcMain.on('social-mode', (_, m) => setSocialMode(m));
   ipcMain.on('panel', (_, k, on) => setPanel(k, on));
+ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('music-hit', (_, hit) => musicWin.setIgnoreMouseEvents(!hit, { forward: true }));
   ipcMain.on('hide', dismiss);
   ipcMain.on('open-tray', () => showOverlay());
@@ -769,7 +768,7 @@ app.whenReady().then(() => {
   ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) adapter.focus(hwnd); });
   ipcMain.on('toast-close', () => toast.hide());
 
-  setInterval(() => { push(); followPanels(); }, 1000); // followPanels also catches a window dragged to another display
+  setInterval(() => { push(); followPanels(); keepPanelsOnTop(); }, 1000); // followPanels also catches a window dragged to another display
   const stopBadges = adapter.startBadgeWatcher(onBadges);
   app.on('will-quit', stopBadges);
   musicWin.webContents.once('did-finish-load', () => layoutPanels()); // the 1s push fills whichever loads later

@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { buildModel, titleCount, parseBadge, pingApps, appForWindow } = require('../src/model');
+const { buildModel, titleCount, parseBadge, pingApps, appForWindow, badgeGrew } = require('../src/model');
 const schema = require('../src/config/schema');
 const catalog = require('../src/config/catalog');
 const music = require('../src/music/index');
@@ -102,3 +102,20 @@ assert.deepStrictEqual(vm, {
 assert.deepStrictEqual(pingApps(mig).map((a) => a.id), ['chatter'], 'socialGroup apps still ping');
 assert.equal(spotify.nowPlaying(vm.music), 'A - B');
 console.log('model ok');
+
+// badgeGrew: only a badge that appears or grows is a ping.
+{
+  const c = (n) => ({ count: n });
+  const dot = { dot: true };
+  assert.equal(badgeGrew(null, c('1')), true);   // appears
+  assert.equal(badgeGrew(null, dot), true);
+  assert.equal(badgeGrew(c('2'), c('3')), true); // grows
+  assert.equal(badgeGrew(c('9'), c('9+')), true);
+  assert.equal(badgeGrew(dot, c('1')), true);    // a dot turns into a number
+  assert.equal(badgeGrew(c('3'), c('2')), false); // read elsewhere: no ping
+  assert.equal(badgeGrew(c('2'), c('2')), false);
+  assert.equal(badgeGrew(c('9+'), c('9+')), false);
+  assert.equal(badgeGrew(c('2'), dot), false);
+  assert.equal(badgeGrew(dot, dot), false);
+  assert.equal(badgeGrew(c('2'), null), false);   // cleared
+}
