@@ -14,9 +14,9 @@
 //                                  under them; true = it had to
 //   mediaKey(cmd)                cmd: 'prev' | 'play' | 'next'
 //   parseAccelerator(accel) -> spec | null      "Alt+Tab", "Alt+`", "Alt+\\" ... null = can't hook it
-//   hookKeys({ switchKey, takeSwitch(), onSwitch(back), onRelease(), binds: { accel: fn } }) -> unhook | null
+//   hookKeys({ switchKey, takeSwitch(), onSwitch(back), onRelease(), onTap?({ ok, error }), binds: { accel: fn } }) -> unhook | null
 //                                  switchKey is claimed only while takeSwitch() is true; onRelease fires when
-//                                  its modifier is let go. null = hook couldn't be installed.
+//                                  its modifier is let go. null = hook couldn't be installed. onTap (mac): the tap was created / refused.
 //   onShellEvents(browserWindow, { flash(win), activate(win), create(win), destroy(win) })
 //   launch(launchSpec)           { uri } | { appId } | { exe } (Windows) / { bundleId } | { path } (mac)
 //   quitApp({ pid, exe }, { force = true }) -> bool    false = protected process, left alone

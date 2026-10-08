@@ -531,8 +531,17 @@ function installHook() {
   const k = config.keys;
   const binds = { [k.search]: onSearchKey };
   if (provider) Object.assign(binds, { [k.musicPrev]: () => mediaPress('prev'), [k.musicPlay]: () => mediaPress('play'), [k.musicNext]: () => mediaPress('next') });
-  unhookKeys = adapter.hookKeys({ switchKey: k.switch, takeSwitch: () => !!config.keys.takeOverSystemSwitcher, onSwitch: onHotkey, onRelease: onAltUp, binds });
+  unhookKeys = adapter.hookKeys({ switchKey: k.switch, takeSwitch: () => !!config.keys.takeOverSystemSwitcher, onSwitch: onHotkey, onRelease: onAltUp, onTap, binds });
   return unhookKeys;
+}
+
+// macOS: the helper reports whether its event tap exists (it retries every 5s until macOS allows it).
+// Say so once per run, after setup, instead of the keys silently doing nothing.
+let tapWarned = false;
+function onTap(m) {
+  if (m.ok || tapWarned || !config.setupComplete) return;
+  tapWarned = true;
+  dialog.showMessageBox({ type: 'warning', message: `${schema.keyLabel(config.keys.switch)} and ${schema.keyLabel(config.keys.search)} aren't reaching Cubby yet`, detail: 'macOS refused Cubby\'s keyboard tap. In System Settings > Privacy & Security, turn Cubby on under Accessibility and Input Monitoring. If it already looks on, remove it with the minus button and add it again (each new build needs a fresh grant). Cubby picks it up within a few seconds.' });
 }
 
 function pauseKeys(on) {
