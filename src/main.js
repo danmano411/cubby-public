@@ -44,6 +44,19 @@ let pushPaused = false;
 
 const log = (...a) => (process.env.CUBBY_DEBUG || SMOKE) && console.log(new Date().toISOString().slice(11, 23), ...a);
 
+// Always-on event log next to the config (cubby.log, rolled to cubby.old.log at 1 MB). The
+// blank-after-sleep bug (docs/10) happens while nobody watches, in the installed build, where
+// console output goes nowhere. Rare events only: power, displays, repairs, window health.
+const EVENTS = path.join(DATA, 'cubby.log');
+function ev(...a) {
+  log(...a);
+  if (SMOKE) return;
+  try {
+    if ((fs.statSync(EVENTS, { throwIfNoEntry: false })?.size || 0) > 1e6) fs.renameSync(EVENTS, path.join(DATA, 'cubby.old.log'));
+    fs.appendFileSync(EVENTS, `${new Date().toISOString()} ${a.join(' ')}\n`);
+  } catch {}
+}
+
 function loadConfig() {
   if (!fs.existsSync(CONFIG)) fs.copyFileSync(STARTER, CONFIG);
   try {
@@ -565,16 +578,69 @@ function applyConfig() {
   push();
 }
 
-function afterWake() {
-  log('wake');
+function afterWake(why) {
+  ev(why);
   installHook();
   setTimeout(relayoutAll, 2000); // displays take a moment to settle after resume
+  setTimeout(() => windowHealth(why), 5000);
+  wakeAt = Date.now();
+  refreshAfterWake();
+}
+
+// After sleep, Windows can drop the windows' drawing surface: they stay shown and keep working, the
+// pages say visible and get frames, yet nothing reaches the screen. Measured on broken instances
+// (docs/10): invalidate() doesn't bring it back, a page reload does, but only once the display is
+// back, which can be seconds after resume (10-15: resume, reload, THEN display removed/added).
+// So every wake event (resume, unlock, a display coming back soon after) restarts a 3s timer and
+// the reload runs when they've stopped. An open switcher is never reloaded under the user.
+let wakeAt = 0;
+let wakeTimer;
+function refreshAfterWake() {
+  if (process.platform !== 'win32') return; // only seen on Windows; on mac it'd flash the cue every unlock
+  clearTimeout(wakeTimer);
+  wakeTimer = setTimeout(function go() {
+    if (overlay.isVisible()) { wakeTimer = setTimeout(go, 1000); return; }
+    cue.webContents.once('did-finish-load', () => showCue({ mode: 'heard', label: 'Cubby refreshed', sub: 'Ready after sleep' }, 2000));
+    repair('reload');
+  }, 3000);
+}
+
+// Window health (docs/10): ask each page whether Chromium thinks it's visible and whether it still
+// gets animation frames. A shown window answering "hidden" or with stalled frames isn't painting.
+// Hidden windows normally answer hidden/stalled; only shown ones count as bad.
+const cubbyWindows = () => ({ overlay, dock, music: musicWin, toast, cue });
+const FRAME_PROBE = `new Promise((r) => { const t = performance.now();
+  requestAnimationFrame(() => r([document.visibilityState, Math.round(performance.now() - t)]));
+  setTimeout(() => r([document.visibilityState, -1]), 1000); })`;
+async function windowHealth(why, { onlyIfBad = false } = {}) {
+  let bad = false;
+  const parts = await Promise.all(Object.entries(cubbyWindows()).map(async ([name, w]) => {
+    // A page reloaded mid-probe never answers, hence the timeout ('?' = no answer).
+    const [vis, raf] = await Promise.race([w.webContents.executeJavaScript(FRAME_PROBE), new Promise((r) => setTimeout(r, 2000, ['?', -1]))]).catch(() => ['?', -1]);
+    const shown = w.isVisible();
+    if (shown && (vis !== 'visible' || raf < 0)) bad = true;
+    return `${name}=${shown ? 'shown' : 'hidden'}/${vis}/${raf < 0 ? 'stalled' : `${raf}ms`}`;
+  }));
+  if (bad || !onlyIfBad) ev('health', why, bad ? 'BAD' : 'ok', parts.join(' '));
+}
+
+// Tray > Troubleshoot: cures for a blank Cubby, cheapest first, each followed by a health line so
+// the log shows which one worked.
+const REPAIRS = {
+  repaint: ['Repaint windows', () => { for (const w of Object.values(cubbyWindows())) w.webContents.invalidate(); }],
+  reshow: ['Re-show side panels', () => { for (const w of [dock, musicWin]) if (w.isVisible()) { w.hide(); w.showInactive(); } }],
+  reload: ['Reload windows', () => { for (const w of Object.values(cubbyWindows())) w.webContents.reload(); }],
+};
+function repair(k) {
+  ev('repair', k);
+  REPAIRS[k][1]();
+  setTimeout(() => windowHealth(`after-${k}`), 2000);
 }
 // Panels that slipped under ordinary windows (still "visible" and "topmost", but buried) go back on
 // top. Checked every second, so it doesn't matter which event (wake, screen on, unlock) buried them.
 function keepPanelsOnTop() {
   for (const w of [dock, musicWin, toast]) {
-    if (w.isVisible() && adapter.keepOnTop(adapter.handleOf(w))) log('lifted', w.getTitle());
+    if (w.isVisible() && adapter.keepOnTop(adapter.handleOf(w))) ev('lifted', w.getTitle());
   }
 }
 
@@ -605,6 +671,12 @@ function buildTrayMenu() {
     { label: 'Set up Cubby…', click: () => ipcMain.emit('open-setup', {}, 'wizard') },
     { label: 'Edit config.json…', click: () => shell.openPath(CONFIG) },
     { label: 'Reload config', click: () => { loadConfig(); setSocialMode(config.socialMode); applyConfig(); } },
+    { label: 'Troubleshoot', submenu: [
+      { label: 'Check windows', click: () => windowHealth('manual') },
+      ...Object.entries(REPAIRS).map(([k, [label]]) => ({ label, click: () => repair(k) })),
+      { type: 'separator' },
+      { label: 'Open log', click: () => shell.openPath(EVENTS) },
+    ] },
     { label: 'Restart Cubby', click: () => { app.relaunch(); app.exit(0); } },
     { label: 'Quit Cubby', click: () => app.exit(0) },
   ]));
@@ -773,14 +845,28 @@ app.whenReady().then(() => {
   // Windows silently drops low-level keyboard hooks that answer too slowly, and sleep/resume
   // is the classic trigger; there's no way to detect it. So re-install on wake/unlock and,
   // as a safety net, every minute. Everything is re-placed when the display setup changes.
-  powerMonitor.on('resume', afterWake);
-  powerMonitor.on('unlock-screen', afterWake);
+  ev('start', pkg.version, `${screen.getAllDisplays().length} display(s)`);
+  powerMonitor.on('resume', () => afterWake('resume'));
+  powerMonitor.on('unlock-screen', () => afterWake('unlock'));
+  powerMonitor.on('suspend', () => ev('suspend'));
+  powerMonitor.on('lock-screen', () => ev('lock'));
+  app.on('child-process-gone', (_, d) => ev('process gone', d.type, d.reason, d.exitCode));
+  for (const [name, w] of Object.entries(cubbyWindows())) w.webContents.on('render-process-gone', (_, d) => ev('renderer gone', name, d.reason));
   setInterval(installHook, 60000);
+  // The screen can go off and on with no power event at all (docs/07 E3), so also check the shown
+  // panels every 5 minutes; logged only when one isn't painting.
+  setInterval(() => windowHealth('periodic', { onlyIfBad: true }), 5 * 60000);
   let relayout;
-  const relayoutSoon = () => { clearTimeout(relayout); relayout = setTimeout(relayoutAll, 500); };
-  screen.on('display-metrics-changed', relayoutSoon);
-  screen.on('display-added', relayoutSoon);
-  screen.on('display-removed', relayoutSoon);
+  const relayoutSoon = (e) => {
+    ev('display', e);
+    clearTimeout(relayout);
+    relayout = setTimeout(relayoutAll, 500);
+    // A display (re)attaching within 2 min of a wake is part of waking: push the refresh after it.
+    if (e !== 'metrics' && Date.now() - wakeAt < 120000) refreshAfterWake();
+  };
+  screen.on('display-metrics-changed', () => relayoutSoon('metrics'));
+  screen.on('display-added', () => relayoutSoon('added'));
+  screen.on('display-removed', () => relayoutSoon('removed'));
   tray.setToolTip('Cubby');
   tray.on('click', () => showOverlay());
   buildTrayMenu();

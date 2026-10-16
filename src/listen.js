@@ -1,4 +1,4 @@
-// state: { mode: 'listening', hint } or { mode: 'heard', label, danger }
+// state: { mode: 'listening', hint } or { mode: 'heard', label, danger, sub? }
 cubby.on('cue', (s) => {
   const cue = document.getElementById('cue');
   cue.className = s.mode + (s.danger ? ' danger' : '');
@@ -6,5 +6,5 @@ cubby.on('cue', (s) => {
   void cue.offsetWidth;
   cue.style.animation = '';
   document.getElementById('title').textContent = s.mode === 'listening' ? 'Listening…' : s.label;
-  document.getElementById('sub').textContent = s.mode === 'listening' ? s.hint || '' : 'Cubby';
+  document.getElementById('sub').textContent = s.mode === 'listening' ? s.hint || '' : s.sub || 'Cubby';
 });
