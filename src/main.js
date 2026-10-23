@@ -7,10 +7,11 @@ const schema = require('./config/schema');
 const catalog = require('./config/catalog');
 const music = require('./music/index'); // not './music': that's the renderer's music.js
 const layout = require('./layout');
-const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingText, pingApps, allApps } = require('./model');
+const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingText, pingApps, allApps, hour12From } = require('./model');
 const session = require('./session');
 const { initUpdater } = require('./updater');
 const edits = require('./features/edits');
+const calendar = require('./features/calendar');
 const pkg = require('../package.json');
 
 // --smoke: isolated self-test. Its own temp userData (set before the single-instance lock, which
@@ -28,7 +29,8 @@ const CONFIG = path.join(DATA, 'config.json');
 const ICONS = path.join(DATA, 'icons.json');
 const STARTER = path.join(__dirname, 'default-config.json');
 const MODES = { dnd: 'Do Not Disturb', ping: 'Ping Me' };
-const PANELS = { socials: 'Socials', music: 'Music' };
+const PANELS = { clock: 'Clock', socials: 'Socials', music: 'Music' };
+const HIDE_ITEM = () => ({ label: 'Hide at the edge (hover or hold Alt)', type: 'checkbox', checked: !!config.panels.autoHide, click: (i) => setPanel('autoHide', i.checked) });
 
 let config;
 let configBroken = false; // config.json didn't load: run on the starter config and never save over it
@@ -38,6 +40,7 @@ let pings = {};
 let lastPing = {};
 let badges = null; // taskbar badges by AppID; null until the first scan
 let overlay, dock, musicWin, toast, cue, tray, toastTimer;
+let clockHour12; // the OS clock's 12/24-hour setting (adapter.timeFormat); undefined = follow the locale
 let foregroundAtOpen = 0;
 let holdOpen = false; // keep the tray up through our own focus changes (context menu, DND minimizing)
 let pushPaused = false;
@@ -113,7 +116,7 @@ function snapshot() {
     else if (t) wantIcon(t);
   }
   const tints = Object.fromEntries(allApps(rc).filter((a) => a.tint).map((a) => [a.id, a.tint]));
-  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() } };
+  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, clock: { hour12: clockHour12 }, nextEvent: calendar.next(), keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() } };
 }
 
 const quitOnDelete = () => process.platform === 'darwin' && config.deleteKey?.macQuit !== false;
@@ -161,6 +164,33 @@ function makeWindow(file, opts) {
 // call (Electron converts with the old monitor's DPI), so read it back and apply once more.
 // 1 DIP off is just physical-pixel rounding (691 DIP at 2.5x = 1727.5 px reads back as 692), not that bug.
 const sameRect = (a, b) => ['x', 'y', 'width', 'height'].every((k) => Math.abs(a[k] - b[k]) <= 1);
+
+// After a monitor is plugged in or unplugged, Electron can keep a window's old display scale:
+// Windows has it at the right size, but Electron and the page lay it out for the previous
+// monitor (10-21: the switcher's content was 2067 DIP in a 1240 DIP window, 2.5x vs 1.5x), so it
+// draws oversized and cropped. Re-setting bounds cures it only sometimes; a fresh start always
+// does. So Cubby restarts itself when it sees it: never while the switcher is open, not in its
+// first 30s, and at most once per 10 min (the time of the last one rides along in argv).
+const STARTED = Date.now();
+const SCALE_FLAG = '--scale-restart=';
+const lastScaleRestart = Number(process.argv.find((a) => a.startsWith(SCALE_FLAG))?.slice(SCALE_FLAG.length)) || 0;
+let restarting = false;
+function restart(reason) {
+  if (restarting) return;
+  restarting = true;
+  ev('restart', reason);
+  const args = process.argv.slice(1).filter((a) => !a.startsWith(SCALE_FLAG));
+  app.relaunch({ args: reason === 'scale' ? [...args, `${SCALE_FLAG}${Date.now()}`] : args });
+  app.exit(0);
+}
+function checkScale() {
+  if (restarting || Date.now() - STARTED < 30000 || overlay.isVisible()) return;
+  const bad = Object.entries(cubbyWindows()).filter(([, w]) => !sameRect(w.getContentBounds(), w.getBounds()));
+  if (!bad.length) return;
+  if (Date.now() - lastScaleRestart < 600000) return; // restarted for this recently and it didn't help
+  ev('missized', bad.map(([n, w]) => `${n}=${w.getBounds().width}/${w.getContentBounds().width}`).join(' '));
+  restart('scale');
+}
 function place(w, { x, y, width, height }) {
   const r = { x, y, width, height };
   w.setBounds(r);
@@ -389,17 +419,27 @@ const panelDisplay = () => layout.pickPanelDisplay(screen.getAllDisplays(), conf
   current: panelDisplayId,
 }, screen.getPrimaryDisplay().id);
 
+// The bar's heights in px (dock.html): border + padding, the clock, the line between, and the
+// socials (open-tray button + one 44px slot per ping app, 8px apart, a line after the button).
+const PANEL_GAP = 10;
+const STRIP = { frame: 18, clock: 98, split: 17, socials: (n) => (n + 1) * 52 - 3 };
 function panelItems(all = false) {
   const items = [];
-  if (all || config.panels.socials) items.push({ key: 'socials', width: 64, height: (pingIds().length + 1) * 52 + 26 }); // +1: open-tray button
+  // One bar for the clock and the socials (dock.html), split by a line: its heights add up.
+  const clock = all || config.panels.clock;
+  const socials = all || config.panels.socials;
+  if (clock || socials) items.push({ key: 'strip', width: 66, height: STRIP.frame + (clock ? STRIP.clock : 0) + (clock && socials ? STRIP.split : 0) + (socials ? STRIP.socials(pingIds().length) : 0) });
   if (provider && (all || config.panels.music)) items.push({ key: 'music', width: 280, height: 176 }); // full expanded width; collapsed it's a 64px column
+  // The bar's window also covers the 10px gap above the music card (transparent), so when both are
+  // hidden at the edge their lines join into one. Stacked with no gap of their own.
+  if (items.length === 2) items[0].height += PANEL_GAP;
   return items;
 }
 
 function layoutPanels(d = panelDisplay()) {
   panelDisplayId = d.id;
-  const wins = { socials: dock, music: musicWin };
-  const rects = layout.panelStack(d, panelItems());
+  const wins = { strip: dock, music: musicWin };
+  const rects = layout.panelStack(d, panelItems(), 0);
   const s = rects.length ? snapshot() : null;
   for (const r of rects) {
     const w = wins[r.key];
@@ -427,6 +467,52 @@ function followPanels() {
   if (d.id !== panelDisplayId) { log('panels ->', d.id); layoutPanels(d); }
 }
 
+// ---- Hidden side bar (panels.autoHide) ----------------------------------------------
+// Tucked off the right edge with a thin line left showing (it glows for pings / music playing).
+// It slides out while the cursor is at that edge or on the bar, while Alt is held, while the tray
+// is open, and for a moment after a music key. Polled: the cursor is outside our windows.
+let tucked = false;
+let altHeld = false;
+let altTimer;
+let peekUntil = 0;
+let lastNear = 0;
+let musicHit = false;
+function onAlt(down) {
+  clearTimeout(altTimer);
+  if (down) altTimer = setTimeout(() => { altHeld = true; edgeTick(); }, 150); // a quick Alt+F4 / Alt+key doesn't flash it
+  else { altHeld = false; edgeTick(); }
+}
+function edgeTick() {
+  const shown = [dock, musicWin].filter((w) => w.isVisible());
+  const d = screen.getAllDisplays().find((x) => x.id === panelDisplayId);
+  let want = false;
+  if (config.panels.autoHide && shown.length && d) {
+    const p = screen.getCursorScreenPoint();
+    const rs = shown.map((w) => w.getBounds());
+    const top = Math.min(...rs.map((r) => r.y)) - 24;
+    const bottom = Math.max(...rs.map((r) => r.y + r.height)) + 24;
+    const atEdge = p.x >= d.workArea.x + d.workArea.width - 8 && p.x < d.bounds.x + d.bounds.width && p.y >= top && p.y <= bottom;
+    const onBar = !tucked && ((dock.isVisible() && layout.contains(dock.getBounds(), p)) || musicHit);
+    if (atEdge || onBar) lastNear = Date.now();
+    want = !(altHeld || overlay.isVisible() || Date.now() < peekUntil || Date.now() - lastNear < 700);
+  }
+  if (want === tucked) return;
+  tucked = want;
+  for (const w of [dock, musicWin]) w.webContents.send('tuck', tucked);
+  dock.setIgnoreMouseEvents(tucked); // tucked: clicks go to whatever is under the bar
+  if (tucked) { musicHit = false; musicWin.setIgnoreMouseEvents(true, { forward: true }); }
+  // After a click-through change Windows keeps showing the old frame of these transparent windows
+  // until a repaint is forced (the slide finished in the page but the bar stayed on screen).
+  // Every frame through the 0.22s slide, so it animates instead of jumping.
+  const t0 = Date.now();
+  const paint = setInterval(() => { for (const w of [dock, musicWin]) w.webContents.invalidate(); if (Date.now() - t0 > 320) clearInterval(paint); }, 16);
+}
+
+// The clock shows time the way the OS clock does (12/24-hour). Re-read on wake in case it changed.
+function readClockFormat() {
+  adapter.timeFormat().then((f) => { if (hour12From(f) !== clockHour12) { clockHour12 = hour12From(f); push(); } });
+}
+
 function setPanel(key, on) {
   config.panels[key] = on;
   saveConfig();
@@ -441,6 +527,8 @@ function mediaPress(k) {
   if (!provider) return;
   provider.control(k);
   if (musicWin.isVisible()) musicWin.webContents.send('peek');
+  peekUntil = Date.now() + 3000; // a tucked bar slides out to show the new track
+  edgeTick();
   setTimeout(push, 350);
   setTimeout(push, 1000);
 }
@@ -509,7 +597,7 @@ function appContext({ hwnd, ...info }) {
   const items = [
     { label: 'Move to group', submenu: config.groups.filter((g) => g !== groupOf).map((g) => ({ label: g.name, click: () => edits.moveApp(info, g.id) })) },
   ];
-  if (groupOf) items.push({ label: 'Remove from Cubby', click: () => edits.moveApp(info, null) });
+  if (groupOf) items.push({ label: 'Nicknames…', click: () => overlay.webContents.send('edits:nicknames', { id: info.id }) }, { label: 'Remove from Cubby', click: () => edits.moveApp(info, null) });
   if (hwnd) items.push({ type: 'separator' }, { label: 'Close window', click: () => { adapter.close(hwnd); setTimeout(push, 400); } });
   holdOpen = true;
   Menu.buildFromTemplate(items).popup({ window: overlay, callback: () => { holdOpen = false; overlay.focus(); } });
@@ -544,7 +632,7 @@ function installHook() {
   const k = config.keys;
   const binds = { [k.search]: onSearchKey };
   if (provider) Object.assign(binds, { [k.musicPrev]: () => mediaPress('prev'), [k.musicPlay]: () => mediaPress('play'), [k.musicNext]: () => mediaPress('next') });
-  unhookKeys = adapter.hookKeys({ switchKey: k.switch, takeSwitch: () => !!config.keys.takeOverSystemSwitcher, onSwitch: onHotkey, onRelease: onAltUp, onTap, binds });
+  unhookKeys = adapter.hookKeys({ switchKey: k.switch, takeSwitch: () => !!config.keys.takeOverSystemSwitcher, onSwitch: onHotkey, onRelease: onAltUp, onAlt, onTap, binds });
   return unhookKeys;
 }
 
@@ -581,6 +669,7 @@ function applyConfig() {
 function afterWake(why) {
   ev(why);
   installHook();
+  readClockFormat();
   setTimeout(relayoutAll, 2000); // displays take a moment to settle after resume
   setTimeout(() => windowHealth(why), 5000);
   wakeAt = Date.now();
@@ -666,6 +755,7 @@ function buildTrayMenu() {
     ...Object.entries(MODES).map(([k, label]) => ({ label: `Socials: ${label}`, type: 'radio', checked: config.socialMode === k, click: () => setSocialMode(k) })),
     { type: 'separator' },
     ...panels.map(([k, label]) => ({ label: `Side panel: ${label}`, type: 'checkbox', checked: !!config.panels[k], click: (i) => setPanel(k, i.checked) })),
+    HIDE_ITEM(),
     { type: 'separator' },
     { label: 'Settings…', click: () => ipcMain.emit('open-setup', {}, 'settings') },
     { label: 'Set up Cubby…', click: () => ipcMain.emit('open-setup', {}, 'wizard') },
@@ -677,7 +767,7 @@ function buildTrayMenu() {
       { type: 'separator' },
       { label: 'Open log', click: () => shell.openPath(EVENTS) },
     ] },
-    { label: 'Restart Cubby', click: () => { app.relaunch(); app.exit(0); } },
+    { label: 'Refresh Cubby', click: () => restart('manual') },
     { label: 'Quit Cubby', click: () => app.exit(0) },
   ]));
 }
@@ -696,9 +786,10 @@ function registerFeatures() {
     BrowserWindow, app, log,
     // extras
     schema, runtime, applyConfig, relayout: relayoutAll, place, notify, makeWindow, smoke: SMOKE,
-    cursorDisplay, pauseKeys, applyLoginItem,
+    cursorDisplay, pauseKeys, applyLoginItem, hour12: () => clockHour12,
+    iconOf: (id) => { const a = findApp(runtime(), id); return a ? icons[adapter.iconTarget(a)] : undefined; },
   };
-  for (const f of [edits, require('./features/setup')]) f.register(ctx);
+  for (const f of [edits, require('./features/setup'), calendar]) f.register(ctx);
 }
 
 // ---- Smoke test (npm run smoke) ---------------------------------------------------
@@ -792,7 +883,7 @@ async function smoke() {
   const primaryId = screen.getPrimaryDisplay().id;
   const inside = (r, wa) => r.x >= wa.x && r.y >= wa.y && r.x + r.width <= wa.x + wa.width && r.y + r.height <= wa.y + wa.height;
   for (const d of displays) {
-    const stack = layout.panelStack(d, panelItems(true));
+    const stack = layout.panelStack(d, panelItems(true), 0);
     const rects = [['overlay', overlay, layout.overlayBounds(d)], ['toast', toast, layout.toastBounds(d)], ['cue', cue, layout.cueBounds(d)],
       ...stack.map((r) => [r.key, r.key === 'music' ? musicWin : dock, r])];
     for (const [name, w, r] of rects) {
@@ -846,6 +937,7 @@ app.whenReady().then(() => {
   // is the classic trigger; there's no way to detect it. So re-install on wake/unlock and,
   // as a safety net, every minute. Everything is re-placed when the display setup changes.
   ev('start', pkg.version, `${screen.getAllDisplays().length} display(s)`);
+  readClockFormat();
   powerMonitor.on('resume', () => afterWake('resume'));
   powerMonitor.on('unlock-screen', () => afterWake('unlock'));
   powerMonitor.on('suspend', () => ev('suspend'));
@@ -874,11 +966,20 @@ app.whenReady().then(() => {
   ipcMain.on('activate', (_, hwnd) => activate(hwnd));
   ipcMain.on('launch', (_, id, l) => { const a = findApp(runtime(), id)?.launch || l; if (a) adapter.launch(a); hideOverlay(); });
   ipcMain.on('context', (_, info) => appContext(info));
+  ipcMain.on('side-menu', (_, at) => {
+    const items = Object.entries(PANELS).filter(([k]) => k !== 'music' || provider)
+      .map(([k, label]) => ({ label, type: 'checkbox', checked: !!config.panels[k], click: (i) => setPanel(k, i.checked) }));
+    items.push({ type: 'separator' }, HIDE_ITEM());
+    holdOpen = true;
+    Menu.buildFromTemplate(items).popup({ window: overlay, x: at?.x, y: at?.y, callback: () => { holdOpen = false; overlay.focus(); } });
+  });
   ipcMain.on('media', (_, k) => mediaPress(k));
   ipcMain.on('social-mode', (_, m) => setSocialMode(m));
   ipcMain.on('panel', (_, k, on) => setPanel(k, on));
 ipcMain.on('voice', (_, on) => setVoice(!!on));
-  ipcMain.on('music-hit', (_, hit) => musicWin.setIgnoreMouseEvents(!hit, { forward: true }));
+  ipcMain.on('music-hit', (_, hit) => { musicHit = hit; musicWin.setIgnoreMouseEvents(!hit, { forward: true }); });
+  setInterval(edgeTick, 100);
+  for (const w of [dock, musicWin]) w.webContents.on('did-finish-load', () => w.webContents.send('tuck', tucked)); // a reload (wake repair) starts untucked
   ipcMain.on('hide', dismiss);
   ipcMain.on('open-tray', () => showOverlay());
   ipcMain.on('open-all', openAll);
@@ -887,12 +988,13 @@ ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) adapter.focus(hwnd); });
   ipcMain.on('toast-close', () => toast.hide());
 
-  setInterval(() => { push(); followPanels(); keepPanelsOnTop(); }, 1000); // followPanels also catches a window dragged to another display
+  setInterval(() => { push(); followPanels(); keepPanelsOnTop(); checkScale(); }, 1000); // followPanels also catches a window dragged to another display
   initUpdater(log);
   const stopBadges = adapter.startBadgeWatcher(onBadges);
   app.on('will-quit', stopBadges);
   musicWin.webContents.once('did-finish-load', () => layoutPanels()); // the 1s push fills whichever loads later
   registerFeatures();
+  if (Date.now() - lastScaleRestart < 60000) cue.webContents.once('did-finish-load', () => showCue({ mode: 'heard', label: 'Cubby refreshed', sub: 'Resized for this screen' }, 2000));
   if (process.argv.includes('--show')) overlay.webContents.once('did-finish-load', () => showOverlay());
 });
 

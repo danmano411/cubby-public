@@ -12,6 +12,7 @@
 //   forceForeground(win) -> bool   (optional)   bring one of OUR windows to the front without synthetic input
 //   keepOnTop(win) -> bool         lift one of OUR topmost windows back above ordinary windows if it slipped
 //                                  under them; true = it had to
+//   timeFormat() -> Promise<string | null>     the OS clock format ('h:mm:ss tt'), null = follow the locale
 //   mediaKey(cmd)                cmd: 'prev' | 'play' | 'next'
 //   parseAccelerator(accel) -> spec | null      "Alt+Tab", "Alt+`", "Alt+\\" ... null = can't hook it
 //   hookKeys({ switchKey, takeSwitch(), onSwitch(back), onRelease(), onTap?({ ok, error }), binds: { accel: fn } }) -> unhook | null

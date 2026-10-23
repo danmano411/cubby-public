@@ -41,7 +41,8 @@ function buildCols() {
 }
 
 const q = () => $filter.value.trim().toLowerCase();
-const isMatch = (r) => !q() || `${r.app.name} ${r.win?.title || ''}`.toLowerCase().includes(q());
+const names = (r) => [r.app.name, ...(r.app.aliases || [])].map((n) => n.toLowerCase()); // aliases: nicknames ("arc" finds Dia)
+const isMatch = (r) => !q() || `${names(r).join(' ')} ${r.win?.title || ''}`.toLowerCase().includes(q());
 const allRows = () => cols.flat();
 const pos = () => {
   for (let c = 0; c < cols.length; c++) {
@@ -83,12 +84,14 @@ function render() {
   document.querySelector('.zones')?.remove();
   document.getElementById('panel').append(zonesEl(!$groups.querySelector('[data-group="other"]')));
   renderMusic();
+  renderEvent();
   for (const b of document.querySelectorAll('#modes button')) b.classList.toggle('on', b.dataset.mode === model.socialMode);
   document.getElementById('voice').classList.toggle('on', !!model.voice); // voiceHints() is null while voice is off
-  for (const b of document.querySelectorAll('#panels button')) {
-    b.classList.toggle('on', !!model.panels[b.dataset.panel]);
-    b.hidden = b.dataset.panel === 'music' && !model.music;
-  }
+  const side = Object.entries(SIDE).filter(([k]) => model.panels[k] && (k !== 'music' || model.music)).map(([, name]) => name);
+  // A count, not the names: the button keeps its width as panels go on and off, so nothing shifts.
+  const $side = document.getElementById('side');
+  $side.textContent = side.length ? `${side.length} on` : 'Off';
+  $side.title = side.length ? `On the right edge: ${side.join(', ')}` : 'Nothing on the right edge';
   document.querySelector('.row.sel')?.scrollIntoView({ block: 'nearest' });
 }
 
@@ -116,7 +119,7 @@ function rowEl(r) {
     if (r.app.unread) el.append(h('span', 'badge', r.app.unread));
     else if (r.app.pinged) el.append(h('span', 'dot'));
   }
-  el.onclick = () => { sel = r.key; go(r); };
+  el.onclick = (e) => { if (e.target.closest('input')) return; sel = r.key; go(r); };
   el.onmousemove = () => { if (mouseMoved && sel !== r.key) { sel = r.key; markSel(); } };
   el.oncontextmenu = (e) => {
     e.preventDefault();
@@ -165,6 +168,30 @@ function renderMusic() {
     }
     $music.append(ctl);
   }
+}
+
+// Next calendar event (features/calendar.js), next to the music. Click: the calendar app.
+function renderEvent() {
+  const e = model.nextEvent;
+  const $event = document.getElementById('event');
+  $event.hidden = !e;
+  if (!e) return;
+  const now = Date.now();
+  const t = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: model.clock?.hour12 });
+  const days = Math.round((new Date(e.start).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86400000);
+  const mins = Math.ceil((e.start - now) / 60000);
+  const when = e.start <= now ? `Now · until ${t(e.end)}`
+    : mins <= 60 ? `In ${mins} min · ${t(e.start)}`
+    : `${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : new Date(e.start).toLocaleDateString(undefined, { weekday: 'short' })} ${t(e.start)}`;
+  // The closer it is, the louder it glows: an hour out, 30 minutes, 15 minutes.
+  $event.className = e.start <= now ? 'now' : mins <= 15 ? 'urgent' : mins <= 30 ? 'sooner' : mins <= 60 ? 'soon' : '';
+  $event.title = [e.title, when, e.location].filter(Boolean).join('\n');
+  const text = h('div', 'text');
+  text.style.minWidth = '0';
+  text.append(h('div', 'name', e.title), h('div', 'sub', [when, e.location].filter(Boolean).join(' · ')));
+  $event.replaceChildren(h('span', 'when'), text);
+  const app = e.app && model.groups.flatMap((g) => g.apps).find((a) => a.id === e.app);
+  $event.onclick = () => { if (app?.running) cubby.send('activate', app.windows[0].hwnd); else if (app) cubby.send('launch', app.id); };
 }
 
 function go(r) {
@@ -254,7 +281,7 @@ $filter.addEventListener('input', () => {
   armed = null; // typing disarms
   // App name beats window title (a chat app showing "#announcements" must not win "nt" over an app named nt),
   // then open windows beat closed apps, then layout order (sort is stable).
-  const name = (r) => { const n = r.app.name.toLowerCase(); return n.startsWith(q()) ? 0 : n.includes(q()) ? 1 : 2; };
+  const name = (r) => { const n = names(r); return n.some((x) => x.startsWith(q())) ? 0 : n.some((x) => x.includes(q())) ? 1 : 2; };
   const shut = (r) => (r.kind === 'closed' || r.kind === 'multi' ? 1 : 0);
   const best = allRows().filter(isMatch).sort((a, b) => name(a) - name(b) || shut(a) - shut(b))[0];
   if (best) sel = best.key;
@@ -280,10 +307,13 @@ for (const b of document.querySelectorAll('#modes button')) {
   b.onclick = () => { cubby.send('social-mode', b.dataset.mode); setTimeout(() => $filter.focus(), 0); };
 }
 document.getElementById('voice').onclick = () => { cubby.send('voice', !model.voice); setTimeout(() => $filter.focus(), 0); };
-// Side panels toggle independently: none / socials / music / both.
-for (const b of document.querySelectorAll('#panels button')) {
-  b.onclick = () => { cubby.send('panel', b.dataset.panel, !model.panels[b.dataset.panel]); setTimeout(() => $filter.focus(), 0); };
-}
+document.getElementById('settings').onclick = () => cubby.send('open-setup', 'settings');
+// Side panels toggle independently from a dropdown (main's menu, the same list as the tray menu's).
+const SIDE = { clock: 'Clock', socials: 'Socials', music: 'Music' };
+document.getElementById('side').onclick = (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  cubby.send('side-menu', { x: Math.round(r.left), y: Math.round(r.bottom + 4) });
+};
 
 cubby.on('open', (m) => {
   disarm();
@@ -347,7 +377,7 @@ const DRAG_PX = 6;
 let drag = null;          // { kind: 'app'|'group', ..., active }
 let dragInfo = null;      // from main: { id, category } for the app being dragged
 let naming = null;        // { info, zone, input }: the new-group name field
-let renaming = null;      // { id, input }
+let renaming = null;      // { input }: a group name or app nicknames field is open
 let pendingRender = false;
 let suppressClick = false;
 
@@ -637,18 +667,36 @@ function decorateGroup(head, g) {
 function startRename(id) {
   const head = document.querySelector(`.group[data-group="${CSS.escape(id)}"] h2`);
   const g = model.groups.find((x) => x.id === id);
-  if (!head || !g || renaming) return;
-  const input = h('input', 'name-field inline');
-  input.value = g.name;
-  input.maxLength = 24;
+  if (!head || !g) return;
+  inlineField(head.firstChild, 'name-field inline', g.name, 24, (name) => {
+    if (name && name !== g.name) cubby.send('rename-group', { id, name });
+  });
+}
+
+// Right-click an app > Nicknames: names search also matches, comma separated.
+function startNicknames(id) {
+  const app = model.groups.flatMap((g) => g.apps).find((a) => a.id === id);
+  const name = document.querySelector(`.row[data-app="${CSS.escape(id)}"]:not(.win) .name`);
+  if (!app || !name) return;
+  const input = inlineField(name, 'name-field inline nick', (app.aliases || []).join(', '), 120, (text) => {
+    if (text !== (app.aliases || []).join(', ')) cubby.send('set-aliases', { id, text });
+  });
+  input?.setAttribute('placeholder', `Nicknames for ${app.name}, e.g. arc, browser`);
+}
+
+// Swaps el for a text field; Enter or clicking away saves (onSave(trimmed text)), Esc cancels.
+function inlineField(el, cls, value, max, onSave) {
+  if (renaming) return null;
+  const input = h('input', cls);
+  input.value = value;
+  input.maxLength = max;
   input.spellcheck = false;
-  head.firstChild.replaceWith(input);
-  renaming = { id, input };
+  el.replaceWith(input);
+  renaming = { input };
   const finish = (save) => {
     if (renaming?.input !== input) return;
     renaming = null;
-    const name = input.value.trim();
-    if (save && name && name !== g.name) cubby.send('rename-group', { id, name });
+    if (save) onSave(input.value.trim());
     pendingRender = true;
     releaseRender(); // puts the header text back (and picks up whatever arrived meanwhile)
     $filter.focus();
@@ -661,9 +709,11 @@ function startRename(id) {
   input.onblur = () => finish(true);
   input.focus();
   input.select();
+  return input;
 }
 
 cubby.on('edits:rename', ({ id }) => startRename(id));
+cubby.on('edits:nicknames', ({ id }) => startNicknames(id));
 
 // ---- Keyboard: Ctrl+Z / Ctrl+Y undo and redo, Ctrl+arrows move the selected app -------------
 // Capture phase, so it wins over the tray's own arrow-key navigation. Cmd works the same as Ctrl.

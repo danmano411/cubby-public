@@ -140,6 +140,10 @@ kbd { font: 12px "Segoe UI Variable Text", "Segoe UI", sans-serif; color: var(--
 .app .text { min-width: 0; flex: 1; }
 .app .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app .sub { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .nick { display: block; width: 100%; margin-top: 1px; padding: 1px 5px; margin-left: -5px; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--muted); font: inherit; font-size: 11.5px; outline: none; }
+.app .nick::placeholder { color: var(--faint); }
+.app .nick:hover { border-color: var(--line); }
+.app .nick:focus { border-color: var(--accent); background: var(--panel); color: var(--text); }
 .app .live { width: 7px; height: 7px; border-radius: 50%; background: var(--live); display: inline-block; margin-right: 5px; }
 .app.placed { opacity: 0.45; }
 .app.dragging { opacity: 0.3; }
@@ -171,3 +175,10 @@ kbd { font: 12px "Segoe UI Variable Text", "Segoe UI", sans-serif; color: var(--
 .keybig .label { font-weight: 600; }
 .keybig .sub { color: var(--muted); font-size: 12px; }
 #loading { color: var(--muted); padding: 40px 0; }
+.field textarea { width: 100%; max-width: 620px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; outline: none; color: var(--text); font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; resize: vertical; user-select: text; -webkit-user-select: text; }
+.field textarea:focus { border-color: rgba(166, 177, 225, 0.55); }
+.steps { padding-left: 18px; display: grid; gap: 4px; max-width: 620px; }
+.cal-status { max-width: 620px; margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.cal-status:empty { display: none; }
+.cal-status.ok { color: var(--live); }
+.cal-status.error { color: var(--danger); padding: 8px 12px; border: 1px solid rgba(232, 150, 160, 0.35); border-radius: 8px; background: rgba(232, 150, 160, 0.08); }

@@ -111,6 +111,19 @@ function renameGroup(config, id, name) {
   return next;
 }
 
+// Nicknames search also matches ("arc" finds Dia), kept in config.apps[id].aliases. text: "a, b".
+function setAliases(config, id, text) {
+  const aliases = [...new Set(String(text).split(',').map((s) => s.trim()).filter(Boolean))];
+  const old = config.apps?.[id]?.aliases || [];
+  if (aliases.join(',') === old.join(',')) return config;
+  const next = clone(config);
+  next.apps = { ...next.apps };
+  const o = { ...next.apps[id], aliases };
+  if (!aliases.length) delete o.aliases;
+  if (Object.keys(o).length) next.apps[id] = o; else delete next.apps[id];
+  return next;
+}
+
 // Apps in a deleted group simply stop being grouped: open ones show up in Other.
 function deleteGroup(config, id) {
   if (!config.groups.some((g) => g.id === id)) throw new Error(`No group "${id}"`);
@@ -254,7 +267,7 @@ class History {
 }
 
 module.exports = {
-  GENERIC_HOSTS, canDrag, moveApp, reorderApp, createGroup, renameGroup, deleteGroup, reorderGroup,
+  GENERIC_HOSTS, canDrag, moveApp, reorderApp, createGroup, renameGroup, setAliases, deleteGroup, reorderGroup,
   groupId, findGroupByName, locate, isGenericHost, categoryFor, catalogEntryFor, pickAppId, entryFromWindow,
   snapshotOf, restore, History,
 };

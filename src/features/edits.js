@@ -192,6 +192,10 @@ function register(c) {
     const old = ctx.config.groups.find((g) => g.id === id);
     if (old) editConfig(`Renamed ${old.name} → ${String(name).trim()}`, (cfg) => E.renameGroup(cfg, id, name));
   }));
+  ipcMain.on('set-aliases', (_, { id, text }) => run(() => {
+    const app = ctx.runtime().groups.flatMap((g) => g.apps).find((a) => a.id === id);
+    if (app) editConfig(String(text).trim() ? `Nicknames for ${app.name}: ${String(text).trim()}` : `Cleared nicknames for ${app.name}`, (cfg) => E.setAliases(cfg, id, text));
+  }));
   ipcMain.on('reorder-group', (_, { id, before }) => run(() => {
     const g = ctx.config.groups.find((x) => x.id === id);
     if (g) editConfig(`Moved group ${g.name}`, (cfg) => E.reorderGroup(cfg, id, { before }));

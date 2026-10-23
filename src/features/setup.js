@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const { matches } = require('../model');
+const edits = require('../config/edits');
 
 // The welcome step's permission rows (macOS) -> the mac adapter's permission names.
 const PANES = { accessibility: 'accessibility', screen: 'screenRecording', input: 'inputMonitoring', microphone: 'microphone', speech: 'speech' };
@@ -20,6 +21,7 @@ const PROVIDERS = [
 
 const slug = (s) => String(s).toLowerCase().replace(/\.exe$/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'app';
 const clone = (o) => JSON.parse(JSON.stringify(o));
+const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
 const launchKey = (l) => String(l?.appId || l?.bundleId || '').toLowerCase();
 const isUrl = (s) => /^[a-z][\w+.-]*:\/\//i.test(s);
 const prettyName = (exe) => { const b = path.win32.basename(exe, '.exe'); return b.charAt(0).toUpperCase() + b.slice(1); };
@@ -127,7 +129,7 @@ function mergeDraft(current, draft) {
     });
   }
   if (d.panels) {
-    for (const k of ['socials', 'music']) if (typeof d.panels[k] === 'boolean') next.panels[k] = d.panels[k];
+    for (const k of ['clock', 'socials', 'music', 'autoHide']) if (typeof d.panels[k] === 'boolean') next.panels[k] = d.panels[k];
     // A choice saved here is the user's: the one-time 'primary' -> 'focus' step never overrides it.
     if (typeof d.panels.display === 'string' && d.panels.display) Object.assign(next.panels, { display: d.panels.display, displayChosen: true });
   }
@@ -143,8 +145,17 @@ function mergeDraft(current, draft) {
   const label = typeof d.labels?.closeAll === 'string' ? d.labels.closeAll.trim() : '';
   if (label) next.labels = { ...next.labels, closeAll: label };
   for (const k of ['confirm', 'macQuit']) if (typeof d.deleteKey?.[k] === 'boolean') next.deleteKey = { ...next.deleteKey, [k]: d.deleteKey[k] };
-  next.setupComplete = true;
-  return next;
+  const k = d.calendar;
+  if (isObj(k)) {
+    if (Array.isArray(k.urls)) next.calendar.urls = k.urls.map((u) => String(u).trim()).filter(Boolean);
+    if (typeof k.notify === 'boolean') next.calendar.notify = k.notify;
+    if (typeof k.notion === 'boolean') next.calendar.notion = k.notion;
+    if ([1, 5, 10, 15].includes(k.notifyMinutes)) next.calendar.notifyMinutes = k.notifyMinutes;
+  }
+  let out = next;
+  if (isObj(d.apps)) for (const [id, o] of Object.entries(d.apps)) if (Array.isArray(o?.aliases)) out = edits.setAliases(out, id, o.aliases.map(String).join(','));
+  out.setupComplete = true;
+  return out;
 }
 
 // ---- Platform bits (Windows) ---------------------------------------------------------
@@ -274,6 +285,7 @@ function register(ctx) {
     let r;
     try { r = await save(draft); } catch (err) { ctx.log('setup save failed', err.stack); r = { ok: false, errors: [`Couldn't save: ${err.message}`] }; }
     send('setup:saved', r);
+    if (r.ok) ipcMain.emit('calendar:refresh'); // see the new links (or a fixed one) straight away
   });
   ipcMain.on('setup:finish', (e) => { // Done step: close and show the tray
     if (!fromPage(e)) return;

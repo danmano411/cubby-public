@@ -94,6 +94,7 @@ function buildModel(windows, config, pings = {}, badges = {}) {
   const toApp = (app, wins, badge = badgeFor(app, badges)) => ({
     id: app.id,
     name: app.name,
+    ...(app.aliases?.length && { aliases: app.aliases }),
     other: !!app.other,
     running: wins.length > 0,
     exePath: wins[0]?.exePath || app.exePath || null,
@@ -114,4 +115,12 @@ const appForWindow = (config, w) => byPriority(config).find((a) => matches(a, w)
 // Apps in every ping group (pingGroup: true), in group order.
 const pingApps = (config) => config.groups.filter((g) => g.pingGroup).flatMap((g) => g.apps);
 
-module.exports = { badgeGrew, pingText, buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };
+// Windows time format (e.g. 'h:mm:ss tt') -> hour12 for Intl: h or tt = 12-hour, H = 24-hour.
+// Quoted text is literal ("HH 'h' mm"). No format (mac, read failed) = undefined: the locale decides.
+function hour12From(pattern) {
+  if (!pattern) return undefined;
+  const p = pattern.replace(/'[^']*'/g, '');
+  return /h|t/.test(p) || !/H/.test(p);
+}
+
+module.exports = { hour12From, badgeGrew, pingText, buildModel, findApp, appForWindow, pingApps, allApps, matches, titleCount, parseBadge, badgeFor };

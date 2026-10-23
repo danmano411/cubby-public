@@ -214,7 +214,8 @@ function maskModifierRelease() {
 }
 const fits = (spec, mods) => spec.alt === mods.alt && spec.ctrl === mods.ctrl && spec.win === mods.win && (!spec.shift || mods.shift);
 
-function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = () => {}, onRelease = () => {}, binds = {} }) {
+// onAlt(down): Alt pressed / let go (held-key repeats left out), e.g. to show the hidden side bar.
+function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = () => {}, onRelease = () => {}, onAlt = () => {}, binds = {} }) {
   const sw = parseAccelerator(switchKey);
   const table = new Map(); // vk -> [{ spec, fn }]
   for (const [accel, fn] of Object.entries(binds)) {
@@ -226,12 +227,14 @@ function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = (
   // Letting go of the switch's modifier (Alt for Alt+Tab) ends the switch session.
   const release = new Set(RELEASE[sw && !sw.alt ? (sw.ctrl ? 'ctrl' : sw.win ? 'win' : 'alt') : 'alt']);
   let hhk = 0;
+  let altDown = false;
   const proc = koffi.register((code, wParam, lParam) => {
     if (code === 0) {
       const k = koffi.decode(lParam, KBDLLHOOKSTRUCT);
       if (Number(k.extra) === MASK_TAG) return CallNextHookEx(hhk, code, wParam, lParam);
       const down = wParam === WM_KEYDOWN || wParam === WM_SYSKEYDOWN;
       if (release.has(k.vkCode) && !down) setImmediate(onRelease);
+      if (RELEASE.alt.includes(k.vkCode) && down !== altDown) { altDown = down; setImmediate(() => onAlt(down)); }
       const binds = table.get(k.vkCode);
       const isSwitch = sw && k.vkCode === sw.vk;
       if (binds || isSwitch) {
@@ -366,7 +369,13 @@ function removeStaleLoginItems(keepName, commandParts) {
   });
 }
 
+// The user's clock format (Settings > Time & language > Region, "Long time"), e.g. 'h:mm:ss tt'.
+// Resolves null when it can't be read.
+const timeFormat = () => new Promise((resolve) => execFile('reg', ['query', 'HKCU\\Control Panel\\International', '/v', 'sTimeFormat'],
+  { windowsHide: true }, (err, out) => resolve((!err && /sTimeFormat\s+REG_SZ\s+(.+)/.exec(out)?.[1].trim()) || null)));
+
 module.exports = {
+  timeFormat,
   listWindows,
   focus,
   forceForeground,

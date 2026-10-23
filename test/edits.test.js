@@ -91,6 +91,14 @@ test('groups: create, rename, delete, reorder', () => {
   assert.strictEqual(E.renameGroup(base, 'tools', 'Tools'), base);
   assert.throws(() => E.renameGroup(base, 'tools', ''), /needs a name/);
 
+  const nick = E.setAliases(base, 'dia', ' arc, Arc ,, browser, arc ');
+  assert.deepStrictEqual(nick.apps.dia, { aliases: ['arc', 'Arc', 'browser'] });
+  assert.strictEqual(E.setAliases(nick, 'dia', 'arc, Arc, browser'), nick, 'same list: no change');
+  assert.ok(!('dia' in E.setAliases(nick, 'dia', ' ').apps), 'clearing the only override drops it');
+  const tinted = { ...base, apps: { dia: { tint: '#000' } } };
+  assert.deepStrictEqual(E.setAliases(E.setAliases(tinted, 'dia', 'arc'), 'dia', '').apps.dia, { tint: '#000' }, 'other overrides stay');
+  assert.deepStrictEqual(schema.validate({ ...schema.DEFAULTS, apps: { dia: { aliases: 'arc' } } }), ['apps.dia.aliases must be a list of names']);
+
   const gone = E.deleteGroup(base, 'chat');
   assert.deepStrictEqual(gone.groups.map((g) => g.id), ['tools', 'browsers']);
   assert.throws(() => E.deleteGroup(base, 'nope'), /No group/);

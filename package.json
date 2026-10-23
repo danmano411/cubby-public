@@ -1,7 +1,7 @@
 {
   "name": "cubby",
   "productName": "Cubby",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "description": "A grouped app tray and window switcher for Windows and macOS",
   "license": "MIT",
@@ -101,6 +101,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
+    "ical.js": "2.2.1",
     "koffi": "^3.3.2"
   },
   "devDependencies": {

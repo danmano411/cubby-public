@@ -3,25 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
-  <title>Cubby dock</title>
+  <title>Cubby strip</title>
   <link rel="stylesheet" href="theme.css">
   <style>
-    /* On a short work area main shrinks this window; the strip scrolls instead of being cut off. */
-    body { height: 100vh; overflow-y: auto; scrollbar-width: none; }
-    #dock { margin: 0 4px; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    /* One right-edge bar: the clock and/or the socials, split by a line. Same width and right edge as
+       the music column below it (64px, 2px in). On a short work area main shrinks this window; the
+       bar scrolls instead of being cut off. */
+    body { height: 100vh; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+    /* Hidden at the edge (panels.autoHide): the bar slides off to the right and a thin line stays.
+       The line's colour says what's waiting: red = unread messages, amber = an app wants you. */
+    #dock { transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s ease; }
+    body.tucked #dock { transform: translateX(calc(100% + 8px)); opacity: 0; }
+    #edge { --c: 255, 255, 255; position: fixed; right: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 2px;
+      background: rgba(var(--c), 0.28); opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+    body.tucked #edge { opacity: 1; }
+    /* Music card below: run the line to the window's bottom (through the gap) to meet the music's line. */
+    body.joined #edge { bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    body[data-edge="pinged"] #edge { --c: 240, 180, 90; background: rgb(var(--c)); box-shadow: 0 0 8px rgba(var(--c), 0.6); }
+    body[data-edge="unread"] #edge { --c: 255, 92, 122; background: rgb(var(--c)); animation: breathe 2.4s ease-in-out infinite; }
+    @keyframes breathe { 0%, 100% { box-shadow: 0 0 6px rgba(var(--c), 0.45); } 50% { box-shadow: 0 0 14px rgba(var(--c), 0.9); } }
+    @media (prefers-reduced-motion: reduce) { #dock, #edge { transition: none; } body[data-edge="unread"] #edge { animation: none; box-shadow: 0 0 10px rgba(var(--c), 0.7); } }
+    #dock { width: 64px; margin: 0 2px 0 auto; padding: 8px 0; display: flex; flex-direction: column; align-items: center;
       background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+    .sep { width: 28px; height: 1px; background: var(--line); margin: 8px 0; flex: none; }
+    [hidden] { display: none !important; }
+
+    #clock { display: flex; flex-direction: column; align-items: center; padding: 4px 0 2px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .hm { font: 600 17px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -0.3px; }
+    .sec { color: var(--accent); font-size: 11.5px; font-weight: 600; margin-top: 3px; }
+    .cap { color: var(--faint); font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; }
+    .cap:empty { display: none; }
+    #clock .sep { margin: 8px 0 6px; }
+    .day { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    #socials { display: flex; flex-direction: column; gap: 8px; align-items: center; }
     .slot { position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; }
     .slot:hover { background: var(--accent-soft); }
     .slot .icon { width: 32px; height: 32px; }
     .slot.closed .icon { filter: grayscale(1); opacity: 0.35; }
     .slot .badge, .slot .dot { position: absolute; top: 0; right: 0; }
-    .sep { width: 28px; height: 1px; background: var(--line); margin: -2px 0; }
+    #socials .sep { margin: -2px 0; }
     .logo { width: 32px; height: 32px; border-radius: 3px; background: url(cubes.svg) center / 100% no-repeat, #1A2537; }
   </style>
 </head>
 <body>
-  <div id="dock"></div>
+  <div id="edge"></div>
+  <div id="dock">
+    <div id="clock">
+      <div class="hm" id="hm"></div>
+      <div class="sec" id="sec"></div>
+      <div class="cap" id="ampm"></div>
+      <div class="sep"></div>
+      <div class="cap" id="weekday"></div>
+      <div class="day" id="day"></div>
+    </div>
+    <div class="sep" id="split"></div>
+    <div id="socials"></div>
+  </div>
   <script src="ui.js"></script>
+  <script src="clock.js"></script>
   <script src="dock.js"></script>
 </body>
 </html>

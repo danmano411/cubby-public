@@ -252,6 +252,7 @@ function forceForeground() {
 }
 
 module.exports = {
+  timeFormat: async () => null, // the clock follows the Mac's locale
   forceForeground,
   keepOnTop: () => false, // macOS keeps the floating level; nothing to repair
   listWindows,

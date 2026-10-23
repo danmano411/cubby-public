@@ -9,6 +9,7 @@ const STEPS = [
   { id: 'groups', title: 'Groups' },
   { id: 'apps', title: 'Apps' },
   { id: 'music', title: 'Music player' },
+  { id: 'calendar', title: 'Calendar' },
   { id: 'panels', title: 'Side panels' },
   { id: 'startup', title: 'Startup & voice' },
   { id: 'done', title: 'All set' },
@@ -442,10 +443,20 @@ function cardsEl() {
         ondragover: (e) => { if (S.drag) { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add('ins'); } },
         ondragleave: (e) => e.currentTarget.classList.remove('ins'),
         ondrop: (e) => { if (!S.drag) return; e.preventDefault(); e.stopPropagation(); const d = S.drag; S.drag = null; placeApp(d.entry, g.id, i); render(); } },
-      iconEl(info.id, info.name, S.icons, null), el('div', { class: 'text' }, el('div', { class: 'name' }, info.name)),
+      iconEl(info.id, info.name, S.icons, null), el('div', { class: 'text' }, el('div', { class: 'name' }, info.name), nickInput(info)),
       el('button', { class: 'x', title: 'Remove from group', 'aria-label': `Remove ${info.name}`, onclick: (e) => { e.stopPropagation(); removeApp(info.id); render(); } }, '✕'));
     }) : el('div', { class: 'drop-hint' }, 'Drop apps here')))
     : [el('div', { class: 'banner warn' }, 'Add a group on the Groups step first.')];
+}
+
+// Nicknames search also matches ("arc" finds Dia): config.apps[id].aliases, typed comma separated.
+// The row is draggable, which would swallow text selection, so it stops being draggable while you type.
+function nickInput({ id, name }) {
+  const apps = S.draft.apps || (S.draft.apps = {});
+  return el('input', { class: 'nick', type: 'text', value: (apps[id]?.aliases || []).join(', '), placeholder: 'Add nicknames', title: 'Other names search finds this app by, comma separated (e.g. arc, browser)', spellcheck: 'false', 'aria-label': `Nicknames for ${name}`,
+    onmousedown: (e) => { e.currentTarget.closest('.app').draggable = false; },
+    onblur: (e) => { e.currentTarget.closest('.app').draggable = true; },
+    oninput: (e) => { apps[id] = { ...apps[id], aliases: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }; renderFoot(); } });
 }
 
 function musicPage() {
@@ -454,12 +465,55 @@ function musicPage() {
     options(S.providers.map((p) => ({ value: p.name, label: p.label, sub: p.note, disabled: !p.available, tag: p.available ? null : 'Coming soon', tagClass: 'soon' })), cur, (v) => { S.draft.music.provider = v; if (v === 'none') S.draft.panels.music = false; render(); })];
 }
 
+// Calendar links (.ics): the next event shows in the tray; reminders are a toast, off by default.
+function calendarPage() {
+  const c = S.draft.calendar || (S.draft.calendar = clone(S.defaults.calendar));
+  const out = [...head('Calendar', 'See your next event at the bottom of the tray, next to the music.')];
+  out.push(toggleRow('Use Notion Calendar on this computer', 'Reads the events Notion Calendar has already synced here, so nothing goes over the network. It only syncs while it is open, so open it now and then.', c.notion !== false, (on) => { c.notion = on; renderFoot(); }));
+  out.push(calStatusEl('notion'));
+  out.push(el('h3', null, 'Calendar links'));
+  out.push(el('div', { class: 'field' },
+    el('textarea', { rows: 3, spellcheck: 'false', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics', 'aria-label': 'Calendar links',
+      value: c.urls.join('\n'), oninput: (e) => { c.urls = e.target.value.split(/\s+/).filter(Boolean); renderFoot(); } }),
+    el('div', { class: 'note', style: 'margin-top:3px' }, 'Optional: for calendars Notion Calendar does not have. One private iCal link per line, so keep them to yourself.')));
+  out.push(calStatusEl('links'));
+  cubby.send('calendar:status?');
+  out.push(el('h3', null, 'Where to find a link'));
+  out.push(el('ul', { class: 'note steps' },
+    el('li', null, el('b', null, 'Google Calendar'), ': calendar.google.com > Settings > pick the calendar > Integrate calendar > ', el('b', null, 'Secret address in iCal format'), '.'),
+    el('li', null, el('b', null, 'Outlook'), ': Settings > Calendar > Shared calendars > Publish a calendar > the ICS link.'),
+    el('li', null, el('b', null, 'iCloud'), ': Calendar > share the calendar > Public Calendar > copy the link.')));
+  out.push(el('h3', null, 'Reminders'));
+  out.push(toggleRow('Remind me before events', 'A small toast on the right edge before each event starts. All-day events are skipped.', !!c.notify, (on) => { c.notify = on; render(); }));
+  if (c.notify) out.push(options([1, 5, 10, 15].map((m) => ({ value: m, label: `${m} minute${m > 1 ? 's' : ''} before` })), c.notifyMinutes, (m) => { c.notifyMinutes = m; render(); }));
+  return out;
+}
+
+// What the last check of each source found (features/calendar.js); refreshed when you Save.
+const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+function calStatusEl(which) {
+  const st = S.calStatus?.[which] || { state: 'none' };
+  const found = (n) => (n ? `${n} upcoming event${n === 1 ? '' : 's'} this week.` : 'Nothing coming up this week.');
+  const text = st.state === 'loading' ? 'Checking…'
+    : st.state === 'ok' ? (which === 'notion' ? `Connected. ${found(st.upcoming)}${st.updatedAt ? ` Last synced by Notion Calendar ${ago(st.updatedAt)}.` : ''}` : `Connected. ${found(st.upcoming)}`)
+    : st.state === 'error' ? st.message
+    : st.state === 'missing' ? 'Notion Calendar is not installed on this computer (or has not been opened yet).'
+    : which === 'links' && S.draft.calendar?.urls?.length ? 'Save changes to connect.' : '';
+  return el('div', { id: `cal-status-${which}`, class: `cal-status ${st.state}`, role: 'status' }, text);
+}
+cubby.on('calendar:status', (st) => {
+  S.calStatus = st;
+  for (const w of ['notion', 'links']) document.getElementById(`cal-status-${w}`)?.replaceWith(calStatusEl(w));
+});
+
 function panelsPage() {
   const p = S.draft.panels;
   const noMusic = S.draft.music.provider === 'none';
   const out = [...head('Side panels', 'Slim panels on the edge of your screen that stay out of the way until you need them.')];
+  out.push(toggleRow('Clock', 'The time and date, as your computer shows them. Handy with the taskbar hidden.', !!p.clock, (on) => { p.clock = on; render(); }));
   out.push(toggleRow('Socials', 'A strip of your ping-group apps with unread badges.', !!p.socials, (on) => { p.socials = on; render(); }));
   out.push(toggleRow('Music', noMusic ? 'Pick a music player first.' : 'A now-playing card with controls.', !!p.music && !noMusic, (on) => { p.music = on; render(); }, noMusic));
+  out.push(toggleRow('Hide at the edge', 'The panels tuck off the side of the screen, leaving a thin line that glows for pings or music. Point at the edge or hold Alt to slide them out.', !!p.autoHide, (on) => { p.autoHide = on; renderFoot(); }));
   if (p.socials && !S.draft.groups.some((g) => g.pingGroup)) out.push(el('div', { class: 'banner warn' }, 'The Socials strip is empty until a group is marked as a ping group (Groups step).'));
   out.push(el('h3', null, 'Show side panels on'));
   if (S.displays.length < 2) out.push(el('p', { class: 'note', style: 'margin:0' }, 'Only one display is connected. Connect another and you can choose which one the panels use.'));
@@ -533,7 +587,7 @@ function donePage() {
     el('p', { class: 'note' }, 'Cubby also lives in the system tray, next to the clock. Right-click it for Settings, or to change any of this later.')];
 }
 
-const PAGES = { welcome: welcomePage, keys: keysPage, groups: groupsPage, apps: appsPage, music: musicPage, panels: panelsPage, startup: startupPage, done: donePage };
+const PAGES = { welcome: welcomePage, keys: keysPage, groups: groupsPage, apps: appsPage, music: musicPage, calendar: calendarPage, panels: panelsPage, startup: startupPage, done: donePage };
 
 // ---- Shell: nav, footer, render -------------------------------------------------------------------
 

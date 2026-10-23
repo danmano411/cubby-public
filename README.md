@@ -61,9 +61,13 @@ It stays out of the way until you press the key, and it is built to be set up by
 
 **Search.** `Alt+~` opens the tray and keeps it open while you type. The list narrows as you go, the best match is selected, `Enter` takes you there. Apps that are closed show up too, and `Enter` launches them.
 
+**Nicknames.** Give an app extra names so search finds it by them: type "google" for Chrome. Right-click an app in the tray › **Nicknames…**, or add them in Settings › Apps.
+
 **Groups.** Apps live in named groups: Social, Work, Browsers, whatever you like. An app belongs to exactly one group. Apps that are open but in no group collect under **Other** so nothing is hidden.
 
-**Side panels with pings.** Mark a group as a "ping group" and its apps' unread counts appear on a slim panel at the edge of your screen, so you can see that something is waiting without opening anything. Switch the group between **ping** mode and **do not disturb**. The counts come from the numbers your OS already puts on taskbar and Dock icons.
+**Side panels with pings.** Mark a group as a "ping group" and its apps' unread counts appear on a slim panel at the edge of your screen, so you can see that something is waiting without opening anything. Switch the group between **ping** mode and **do not disturb**. The counts come from the numbers your OS already puts on taskbar and Dock icons. A clock can sit on the same bar. Pick panels from the **Side** menu in the tray. **Hide at the edge** tucks them into a thin line that glows when something is waiting and slides them out when you hover the edge or hold `Alt`.
+
+**Next event.** The tray footer shows your next calendar event. It glows as the event gets close: within an hour, within 30 minutes, then within 15 minutes. It reads [Notion Calendar](https://www.notion.com/product/calendar)'s copy on your disk, or private iCal (.ics) links you paste in Settings › Calendar. Reminder notifications are optional and off by default.
 
 **Music strip and keys.** A strip shows what is playing, with previous, play/pause and next, and clicking the track jumps to the player. `Alt+[`, `Alt+\` and `Alt+]` control playback from anywhere. Players: Spotify; on Windows also **System media** (whatever is playing, browser tabs included); on macOS also Apple Music. Set the provider to `none` and the strip, panel and keys go away.
 

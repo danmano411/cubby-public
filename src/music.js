@@ -22,12 +22,16 @@ cubby.on('peek', () => {
 card.onmouseenter = () => { hovered = true; cubby.send('music-hit', true); setOpen(); };
 card.onmouseleave = () => { hovered = false; cubby.send('music-hit', false); setOpen(); };
 
+cubby.on('tuck', (on) => document.body.classList.toggle('tucked', on));
+
 const go = () => (s.running ? cubby.send('activate', s.windows[0].hwnd) : cubby.send('launch', s.id));
 document.getElementById('info').onclick = go;
 
 cubby.on('model', (m) => {
   s = m.music;
   if (!s) return; // provider 'none': main hides this window
+  document.body.classList.toggle('playing', !!s.nowPlaying);
+  document.body.classList.toggle('joined', !!(m.panels.clock || m.panels.socials));
   card.classList.toggle('off', !s.running);
   const [artist, ...song] = (s.nowPlaying || '').split(' - ');
   document.getElementById('song').textContent = s.nowPlaying ? song.join(' - ') || artist : s.running ? 'Paused' : s.name;

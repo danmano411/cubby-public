@@ -134,6 +134,22 @@ test('mergeDraft takes only what setup owns and the result validates', () => {
   assert.equal(current.groups.length, 0, 'the live config is not mutated');
 });
 
+test('mergeDraft takes nicknames and leaves other per-app overrides alone', () => {
+  const cur = { ...schema.withDefaults({}), apps: { dia: { tint: '#000', aliases: ['old'] }, slack: { aliases: ['work chat'] } } };
+  const next = mergeDraft(cur, { apps: { dia: { tint: 'changed', aliases: ['arc', ' browser '] }, slack: { aliases: [] } } });
+  assert.deepStrictEqual(next.apps, { dia: { tint: '#000', aliases: ['arc', 'browser'] } });
+  assert.deepStrictEqual(mergeDraft(cur, {}).apps, cur.apps);
+});
+
+test('mergeDraft takes the calendar links and reminder choice', () => {
+  const cur = schema.withDefaults({});
+  const next = mergeDraft(cur, { calendar: { urls: [' webcal://x/a.ics ', '', 'https://y/b.ics'], notify: true, notifyMinutes: 10, app: 'evil' } });
+  assert.deepStrictEqual(next.calendar, { notion: true, urls: ['webcal://x/a.ics', 'https://y/b.ics'], notify: true, notifyMinutes: 10, app: 'notion-calendar' });
+  assert.deepStrictEqual(schema.validate(next), []);
+  assert.strictEqual(mergeDraft(cur, { calendar: { notifyMinutes: 999 } }).calendar.notifyMinutes, 5, 'only the offered choices');
+  assert.deepStrictEqual(schema.validate({ ...next, calendar: { ...next.calendar, urls: ['file:///c:/x.ics'] } }), ['calendar.urls must be a list of links starting with https:// or webcal://']);
+});
+
 test('mergeDraft copies deleteKey booleans only', () => {
   const cur = schema.load(JSON.stringify(schema.DEFAULTS)).config;
   assert.deepStrictEqual(mergeDraft(cur, { deleteKey: { confirm: false, macQuit: false } }).deleteKey, { confirm: false, macQuit: false });

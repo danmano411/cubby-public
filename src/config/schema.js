@@ -12,7 +12,8 @@ const DEFAULTS = {
   socialMode: 'ping', // 'ping' | 'dnd'
   // display: 'focus' (the focused window's display) | 'primary' | 'mouse' | display id / label.
   // displayChosen: true once the user picked it in Settings (see upgradeDisplay).
-  panels: { socials: false, music: false, display: 'focus' },
+  // autoHide: the side bar tucks off the edge (a thin line shows) until hovered, Alt is held or the tray opens.
+  panels: { clock: false, socials: false, music: false, autoHide: false, display: 'focus' },
   groups: [],
   music: { provider: 'spotify' },
   voice: {
@@ -22,7 +23,10 @@ const DEFAULTS = {
   },
   labels: { closeAll: 'Close all' }, // wording of the Close All button / menu item / confirm
   deleteKey: { confirm: true, macQuit: true }, // Delete closes the hovered app: ask first; on mac quit the app (not just the window)
-  apps: {}, // per-app overrides by id: name, tint, badgeOffset, launch fields
+  // Next event in the tray, from Notion Calendar's copy on this computer (notion) and/or private calendar
+  // links (.ics); a toast notifyMinutes before each one if notify.
+  calendar: { notion: true, urls: [], notify: false, notifyMinutes: 5, app: 'notion-calendar' },
+  apps: {}, // per-app overrides by id: name, aliases (search nicknames), tint, badgeOffset, launch fields
 };
 // Group ids the tray uses for its own columns: Other, the music strip and the "+ New group" drop zone.
 const RESERVED_GROUP_IDS = ['other', 'music', 'new'];
@@ -62,6 +66,7 @@ function withDefaults(c) {
     music: { ...d.music, ...c.music },
     voice: { ...d.voice, ...v, commands: { ...d.voice.commands, ...v.commands }, thresholds: { ...d.voice.thresholds, ...v.thresholds } },
     labels: { ...d.labels, ...c.labels },
+    calendar: { ...d.calendar, ...c.calendar },
     deleteKey: c.deleteKey != null && !isObj(c.deleteKey) ? c.deleteKey : { ...d.deleteKey, ...c.deleteKey }, // a non-object is left for validate
     apps: { ...c.apps },
   };
@@ -161,13 +166,24 @@ function validate(c, platform) {
       appIds[id] = g.name;
     }
   }
-  if (isObj(c.apps)) for (const [id, o] of Object.entries(c.apps)) checkTitle(`apps.${id}`, o?.match);
+  if (isObj(c.apps)) for (const [id, o] of Object.entries(c.apps)) {
+    checkTitle(`apps.${id}`, o?.match);
+    if (o?.aliases != null && !(Array.isArray(o.aliases) && o.aliases.every((a) => typeof a === 'string'))) err(`apps.${id}.aliases must be a list of names`);
+  }
   checkTitle('music', c.music?.match);
   checkTitle('music.app', c.music?.app?.match);
   if (c.labels != null && (!isObj(c.labels) || (c.labels.closeAll != null && (typeof c.labels.closeAll !== 'string' || !c.labels.closeAll.trim())))) err('labels.closeAll must be a non-empty string');
   if (c.deleteKey != null) {
     if (!isObj(c.deleteKey)) err('deleteKey must be an object');
     else for (const k of ['confirm', 'macQuit']) if (c.deleteKey[k] != null && typeof c.deleteKey[k] !== 'boolean') err(`deleteKey.${k} must be true or false`);
+  }
+  const k = c.calendar;
+  if (!isObj(k)) err('calendar must be an object');
+  else {
+    if (!Array.isArray(k.urls) || !k.urls.every((u) => typeof u === 'string' && /^(https?|webcal):\/\//i.test(u.trim()))) err('calendar.urls must be a list of links starting with https:// or webcal://');
+    if (typeof k.notify !== 'boolean') err('calendar.notify must be true or false');
+    if (typeof k.notion !== 'boolean') err('calendar.notion must be true or false');
+    if (typeof k.notifyMinutes !== 'number' || k.notifyMinutes < 0 || k.notifyMinutes > 120) err('calendar.notifyMinutes must be between 0 and 120');
   }
   const v = c.voice;
   if (typeof v.enabled !== 'boolean') err('voice.enabled must be true or false');

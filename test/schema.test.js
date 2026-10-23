@@ -34,7 +34,7 @@ assert.equal(c.setupComplete, true, 'migrated configs skip first-run setup');
 assert.deepStrictEqual(c.keys, { switch: 'Alt+Tab', search: 'Alt+`', musicPrev: 'Alt+[', musicPlay: 'Alt+\\', musicNext: 'Alt+]', takeOverSystemSwitcher: true });
 assert.equal(c.startAtLogin, true);
 assert.equal(c.socialMode, 'dnd');
-assert.deepStrictEqual(c.panels, { socials: true, music: true, display: 'focus' }, 'v1 never had a display choice: the default');
+assert.deepStrictEqual(c.panels, { clock: false, socials: true, music: true, autoHide: false, display: 'focus' }, 'v1 never had a display choice (or a clock): the defaults');
 assert.equal(c.groups[0].pingGroup, true, 'socialGroup -> pingGroup on that group');
 assert.equal(c.groups[1].pingGroup, undefined);
 assert.deepStrictEqual(c.groups[0].apps, v1.groups[0].apps, 'inline apps kept as-is');
@@ -59,7 +59,7 @@ assert.equal(off.keys.takeOverSystemSwitcher, false);
 assert.equal(off.startAtLogin, false);
 assert.equal(off.voice.enabled, false);
 assert.equal(off.socialMode, 'ping');
-assert.deepStrictEqual(off.panels, { socials: true, music: false, display: 'focus' }, '"visible" meant the socials strip');
+assert.deepStrictEqual(off.panels, { clock: false, socials: true, music: false, autoHide: false, display: 'focus' }, '"visible" meant the socials strip');
 const { voice, ...noVoice } = v1;
 assert.equal(schema.load(JSON.stringify(noVoice), 'windows').config.voice.enabled, true);
 
@@ -121,7 +121,7 @@ const up = schema.load(JSON.stringify(oldDefault), 'windows');
 assert.equal(up.upgraded, true);
 assert.equal(up.migrated, false, 'not a v1 migration: no v1 backup');
 assert.deepStrictEqual(up.errors, []);
-assert.deepStrictEqual(up.config.panels, { socials: true, music: true, display: 'focus', displayChosen: false });
+assert.deepStrictEqual(up.config.panels, { clock: false, socials: true, music: true, autoHide: false, display: 'focus', displayChosen: false });
 // Saved and loaded again: done, nothing changes.
 const up2 = schema.load(JSON.stringify(up.config), 'windows');
 assert.equal(up2.upgraded, false);
