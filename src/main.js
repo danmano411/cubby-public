@@ -173,18 +173,50 @@ const sameRect = (a, b) => ['x', 'y', 'width', 'height'].every((k) => Math.abs(a
 // first 30s, and at most once per 10 min (the time of the last one rides along in argv).
 const STARTED = Date.now();
 const SCALE_FLAG = '--scale-restart=';
-const lastScaleRestart = Number(process.argv.find((a) => a.startsWith(SCALE_FLAG))?.slice(SCALE_FLAG.length)) || 0;
-let restarting = false;
+const CRASH_FLAG = '--crash-restart=';
+const flagTime = (f) => Number(process.argv.find((a) => a.startsWith(f))?.slice(f.length)) || 0;
+const lastScaleRestart = flagTime(SCALE_FLAG);
+const lastCrashRestart = flagTime(CRASH_FLAG);
+let restarting = false; // also set once quitting starts any other way (updater, Quit)
+let unhookKeys = null; // set by installHook
+// 10-23: right after waking with a monitor unplugged, app.exit closed the windows but the process
+// never ended. Its timers kept hitting destroyed windows ("Object has been destroyed"), and the
+// relaunched copy waited on it forever. So if it's still here after 3s, kill it outright.
+// The hook goes first: while it's installed, Alt+Tab reaches neither Cubby nor Windows.
+function quit() {
+  restarting = true;
+  if (unhookKeys) unhookKeys();
+  unhookKeys = null;
+  app.exit(0);
+  setTimeout(() => { ev('exit stuck'); process.kill(process.pid); }, 3000);
+}
 function restart(reason) {
   if (restarting) return;
   restarting = true;
   ev('restart', reason);
-  const args = process.argv.slice(1).filter((a) => !a.startsWith(SCALE_FLAG));
-  app.relaunch({ args: reason === 'scale' ? [...args, `${SCALE_FLAG}${Date.now()}`] : args });
-  app.exit(0);
+  const flag = { scale: SCALE_FLAG, crash: CRASH_FLAG }[reason];
+  const args = process.argv.slice(1).filter((a) => !flag || !a.startsWith(flag));
+  app.relaunch({ args: flag ? [...args, `${flag}${Date.now()}`] : args });
+  quit();
 }
+// An error Cubby didn't expect (or a crashed or frozen window) leaves it half-working with its hook
+// still taking Alt+Tab, so neither switcher works. Restart instead. A second crash within a minute of
+// that restart gives up and quits, which hands Alt+Tab back to Windows.
+function crashed(what) {
+  if (restarting) return; // timers hitting windows that are already closing
+  ev('crash', String(what).split('\n').slice(0, 4).join(' | '));
+  if (SMOKE) { console.error('smoke: crash', what); app.exit(1); return; }
+  if (Date.now() - lastCrashRestart > 60000) return restart('crash');
+  restarting = true;
+  if (unhookKeys) unhookKeys(); // before the dialog holds the main thread
+  unhookKeys = null;
+  dialog.showErrorBox('Cubby stopped', 'Cubby ran into an error twice in a row and closed, so the app switcher key is back to your system\'s own. Start Cubby again to bring it back. Details are in cubby.log.');
+  quit();
+}
+process.on('uncaughtException', (e) => crashed(e?.stack || e));
 function checkScale() {
-  if (restarting || Date.now() - STARTED < 30000 || overlay.isVisible()) return;
+  // Nor right after a wake: the displays are still settling, and that's when exit got stuck (10-23, 10-24).
+  if (restarting || Date.now() - STARTED < 30000 || Date.now() - wakeAt < 15000 || overlay.isVisible()) return;
   const bad = Object.entries(cubbyWindows()).filter(([, w]) => !sameRect(w.getContentBounds(), w.getBounds()));
   if (!bad.length) return;
   if (Date.now() - lastScaleRestart < 600000) return; // restarted for this recently and it didn't help
@@ -623,7 +655,6 @@ function closeRow(hwnds) {
 
 // ---- Keyboard hook (re)install -------------------------------------------------
 
-let unhookKeys = null;
 let keysPaused = false; // setup is recording a new combo: let every key reach its window
 function installHook() {
   if (unhookKeys) unhookKeys();
@@ -768,7 +799,7 @@ function buildTrayMenu() {
       { label: 'Open log', click: () => shell.openPath(EVENTS) },
     ] },
     { label: 'Refresh Cubby', click: () => restart('manual') },
-    { label: 'Quit Cubby', click: () => app.exit(0) },
+    { label: 'Quit Cubby', click: quit },
   ]));
 }
 
@@ -943,7 +974,14 @@ app.whenReady().then(() => {
   powerMonitor.on('suspend', () => ev('suspend'));
   powerMonitor.on('lock-screen', () => ev('lock'));
   app.on('child-process-gone', (_, d) => ev('process gone', d.type, d.reason, d.exitCode));
-  for (const [name, w] of Object.entries(cubbyWindows())) w.webContents.on('render-process-gone', (_, d) => ev('renderer gone', name, d.reason));
+  app.on('before-quit', () => { restarting = true; }); // the updater's quitAndInstall: its window teardown isn't a crash
+  for (const [name, w] of Object.entries(cubbyWindows())) {
+    w.webContents.on('render-process-gone', (_, d) => { ev('renderer gone', name, d.reason); if (d.reason !== 'clean-exit') crashed(`${name} renderer ${d.reason}`); });
+    // Frozen pages: give it 5s to come back (a busy moment after wake), then restart.
+    let frozen;
+    w.on('unresponsive', () => { ev('unresponsive', name); frozen = frozen || setTimeout(() => crashed(`${name} unresponsive`), 5000); });
+    w.on('responsive', () => { clearTimeout(frozen); frozen = null; });
+  }
   setInterval(installHook, 60000);
   // The screen can go off and on with no power event at all (docs/07 E3), so also check the shown
   // panels every 5 minutes; logged only when one isn't painting.
