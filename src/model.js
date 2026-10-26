@@ -91,7 +91,9 @@ function buildModel(windows, config, pings = {}, badges = {}) {
     }
   }
 
-  const toApp = (app, wins, badge = badgeFor(app, badges)) => ({
+  // Title counts ("(3) Discord", "Inbox (12) - Gmail") only for ping-group apps: any other window can
+  // have a number in brackets that isn't unread mail (10-26: Notepad's "note (6000000000) - Notepad").
+  const toApp = (app, wins, ping = false, badge = badgeFor(app, badges)) => ({
     id: app.id,
     name: app.name,
     ...(app.aliases?.length && { aliases: app.aliases }),
@@ -99,12 +101,12 @@ function buildModel(windows, config, pings = {}, badges = {}) {
     running: wins.length > 0,
     exePath: wins[0]?.exePath || app.exePath || null,
     ...(wins[0]?.bundleId && { bundleId: wins[0].bundleId }), // mac: lets drag-to-group add it by bundle id
-    unread: Math.max(0, ...wins.map((w) => titleCount(w.title))) || badge?.count || 0,
+    unread: (ping && Math.max(0, ...wins.map((w) => titleCount(w.title)))) || badge?.count || 0,
     pinged: !!pings[app.id] || !!badge?.dot,
     windows: wins.map(({ hwnd, title, minimized }) => ({ hwnd, title, minimized })),
   });
 
-  const groups = config.groups.map((g) => ({ id: g.id, name: g.name, ping: !!g.pingGroup, apps: g.apps.map((a) => toApp(a, hits.get(a.id))) }));
+  const groups = config.groups.map((g) => ({ id: g.id, name: g.name, ping: !!g.pingGroup, apps: g.apps.map((a) => toApp(a, hits.get(a.id), !!g.pingGroup)) }));
   groups.push({ id: 'other', name: 'Other', ping: false, apps: [...other.values()].map((a) => toApp(a, a.wins)) });
   const music = config.music ? toApp(config.music, hits.get(config.music.id)) : null;
   return { groups, music };

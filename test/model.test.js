@@ -15,23 +15,26 @@ const config = catalog.resolveConfig(raw, spotify, 'windows');
 const w = (hwnd, exe, title) => ({ hwnd, exe, title, exePath: `C:\\x\\${exe}`, minimized: false });
 const m = buildModel([
   w(30, 'webby.exe', 'YouTube - Webby'),
-  w(10, 'webby.exe', 'Mail - Webby'),
+  w(10, 'webby.exe', 'Mail (2) - Webby'),
   w(5, 'pythonw.exe', 'notes'),
   w(6, 'pythonw.exe', 'some other tool'),
   w(7, 'chatter.exe', '(3) general - Chatter'),
   w(8, 'spotify.exe', 'Some Artist - Some Song'),
   w(9, 'vaulty.exe', 'Vault - Vaulty'),
+  w(11, 'notepad.exe', 'note (6000000000) - Notepad'),
 ], config, { pinger: true });
 
 const app = (id) => m.groups.flatMap((g) => g.apps).find((a) => a.id === id);
 assert.deepStrictEqual(app('webby').windows.map((x) => x.hwnd), [10, 30], 'multi-window, stable hwnd order');
 assert.equal(app('notes').windows.length, 1, 'matched by exe + title');
 assert.equal(app('chatter').unread, 3, 'unread parsed from title');
+assert.equal(app('other:notepad.exe').unread, 0, 'a number in brackets outside a ping group is not unread');
+assert.equal(app('webby').unread, 0, 'nor in a plain group');
 assert.equal(app('pinger').pinged, true, 'ping flag carried through');
 assert.equal(app('pinger').running, false);
 assert.equal(app('surfer').running, false, 'closed apps still listed');
 const other = m.groups.find((g) => g.id === 'other').apps.map((a) => a.name).sort();
-assert.deepStrictEqual(other, ['Pythonw', 'Vaulty'], 'unconfigured windows land in Other');
+assert.deepStrictEqual(other, ['Notepad', 'Pythonw', 'Vaulty'], 'unconfigured windows land in Other');
 assert.equal(m.groups.find((g) => g.id === 'chat').ping, true, 'pingGroup flag reaches the model');
 assert.deepStrictEqual(pingApps(config).map((a) => a.id), ['chatter', 'pinger', 'meetly']);
 assert.equal(spotify.nowPlaying(m.music), 'Some Artist - Some Song', 'spotify provider reads the title');
