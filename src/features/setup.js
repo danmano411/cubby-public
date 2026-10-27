@@ -145,6 +145,8 @@ function mergeDraft(current, draft) {
   const label = typeof d.labels?.closeAll === 'string' ? d.labels.closeAll.trim() : '';
   if (label) next.labels = { ...next.labels, closeAll: label };
   for (const k of ['confirm', 'macQuit']) if (typeof d.deleteKey?.[k] === 'boolean') next.deleteKey = { ...next.deleteKey, [k]: d.deleteKey[k] };
+  if (['layout', 'recent'].includes(d.switcher?.tabOrder)) next.switcher = { ...next.switcher, tabOrder: d.switcher.tabOrder };
+  if (typeof d.switcher?.raiseSnapPartners === 'boolean') next.switcher = { ...next.switcher, raiseSnapPartners: d.switcher.raiseSnapPartners };
   const k = d.calendar;
   if (isObj(k)) {
     if (Array.isArray(k.urls)) next.calendar.urls = k.urls.map((u) => String(u).trim()).filter(Boolean);
@@ -294,6 +296,8 @@ function register(ctx) {
   });
   ipcMain.on('setup:close', (e) => { if (fromPage(e)) win.close(); });
   ipcMain.on('setup:minimize', (e) => { if (fromPage(e)) win.minimize(); });
+  ipcMain.on('setup:disable', (e) => { if (fromPage(e)) ctx.disableCubby(); });
+  ipcMain.on('setup:uninstall', (e) => { if (fromPage(e)) ctx.uninstallCubby(); });
   ipcMain.on('setup:open-pane', (e, name) => {
     if (fromPage(e) && PANES[name]) adapter.openPermissionSettings?.(PANES[name]);
   });

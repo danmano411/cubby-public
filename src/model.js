@@ -86,7 +86,8 @@ function buildModel(windows, config, pings = {}, badges = {}) {
     const app = ordered.find((a) => matches(a, w));
     if (app) hits.get(app.id).push(w);
     else {
-      if (!other.has(w.exe)) other.set(w.exe, { id: `other:${w.exe}`, name: prettyExe(w.exe), exePath: w.exePath, launch: { exe: w.exePath }, other: true, wins: [] });
+      // Store apps: the frame's title is the app's name ("Settings"); the exe isn't (SystemSettings).
+      if (!other.has(w.exe)) other.set(w.exe, { id: `other:${w.exe}`, name: w.appId && w.title ? w.title : prettyExe(w.exe), exePath: w.exePath, launch: { exe: w.exePath }, other: true, wins: [] });
       other.get(w.exe).wins.push(w);
     }
   }
@@ -101,6 +102,7 @@ function buildModel(windows, config, pings = {}, badges = {}) {
     running: wins.length > 0,
     exePath: wins[0]?.exePath || app.exePath || null,
     ...(wins[0]?.bundleId && { bundleId: wins[0].bundleId }), // mac: lets drag-to-group add it by bundle id
+    ...(wins[0]?.appId && { appId: wins[0].appId }), // Windows Store app: its icon and drag-to-group's launch use the AppID
     unread: (ping && Math.max(0, ...wins.map((w) => titleCount(w.title)))) || badge?.count || 0,
     pinged: !!pings[app.id] || !!badge?.dot,
     windows: wins.map(({ hwnd, title, minimized }) => ({ hwnd, title, minimized })),

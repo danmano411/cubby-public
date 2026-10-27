@@ -82,7 +82,7 @@ function step(kind) {
 
 // ---- Moving apps (drag, keyboard and context menu all end up here) ---------------------------
 
-// req: { app: { id, name, exePath, title, running, bundleId? }, to: group id | null | 'other',
+// req: { app: { id, name, exePath, title, running, bundleId?, appId? }, to: group id | null | 'other',
 //        before?: app id | null, index?, newGroup?: name }
 async function moveRequest({ app: info, to, before, index, newGroup }) {
   const config = ctx.config;

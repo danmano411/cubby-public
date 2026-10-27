@@ -175,6 +175,24 @@ test('entryFromWindow: generic hosts get a title matcher, so they do not catch e
   assert.deepStrictEqual(model.groups.find((g) => g.id === 'other').apps.map((a) => a.windows.map((x) => x.hwnd)), [[3, 4]], 'the rest stay in Other');
 });
 
+test('entryFromWindow: Store apps launch by their AppID; an unresolved ApplicationFrameHost frame matches by title', () => {
+  const appId = 'windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel';
+  const exePath = 'C:\\Windows\\ImmersiveControlPanel\\SystemSettings.exe';
+  const model = buildModel([{ hwnd: 1, exe: 'systemsettings.exe', exePath, appId, title: 'Settings', minimized: false }], catalog.resolveConfig(base, null, 'windows'));
+  const app = model.groups.find((g) => g.id === 'other').apps[0];
+  assert.strictEqual(app.appId, appId, 'the model passes the AppID on to drag-to-group');
+  const r = E.entryFromWindow({ ...app, title: 'Settings' }, { catalog: WIN, installed: [], platform: 'windows' });
+  assert.deepStrictEqual(r.entry.match, { exe: 'systemsettings.exe' });
+  assert.deepStrictEqual(r.entry.launch, { appId });
+
+  // listWindows couldn't find the real app: the shared host must not catch every Store app.
+  assert.ok(E.isGenericHost('ApplicationFrameHost.exe'));
+  const host = E.entryFromWindow({ id: 'other:applicationframehost.exe', name: 'Applicationframehost', exePath: 'C:\\Windows\\System32\\ApplicationFrameHost.exe', title: 'Calculator', running: true },
+    { catalog: WIN, installed: [], platform: 'windows' });
+  assert.deepStrictEqual(host.entry.match, { exe: 'applicationframehost.exe', title: '^Calculator$' });
+  assert.strictEqual(host.entry.launch, undefined);
+});
+
 test('entryFromWindow: macOS matches by bundle id', () => {
   const mac = catalog.load('mac');
   const known = E.entryFromWindow({ id: 'other:x', name: 'IntelliJ IDEA', exePath: '/Applications/IntelliJ IDEA.app', bundleId: 'com.jetbrains.intellij', title: 't' }, { catalog: mac, platform: 'mac' });

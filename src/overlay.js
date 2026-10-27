@@ -17,10 +17,46 @@ document.addEventListener('mousemove', (e) => {
   lastXY = xy;
 });
 
+// Most recently used first (main's activation history); a window it never saw sorts last.
+const rank = (hwnd) => { const i = (model.recent || []).indexOf(hwnd); return i < 0 ? 1e9 : i; };
+const latest = (wins) => wins.reduce((a, b) => (rank(b.hwnd) < rank(a.hwnd) ? b : a));
+
+// Split screen (main + src/snap.js): each layout is a row in a "Split screen" column, first, only while
+// there are any, and brings all of its windows back. To tell two layouts apart without more words, each
+// has a color, and every window of it carries a small map of the layout in that color with its own
+// slot filled: blue pair vs orange pair, left vs right. slotOf: hwnd -> { layout, slot }.
+const LAYOUT_COLORS = ['#7aa2ff', '#f2b45c', '#6fd3a0', '#e48ad6'];
+const SPLIT = { id: 'layouts', name: 'Split screen', apps: [] };
+let slotOf = new Map();
+function layoutGlyph(l, own) {
+  const c = LAYOUT_COLORS[l.color % LAYOUT_COLORS.length];
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 20 14');
+  svg.classList.add('glyph');
+  for (const s of l.slots) {
+    const r = document.createElementNS(NS, 'rect');
+    const at = { x: s.x * 20 + 0.75, y: s.y * 14 + 0.75, width: Math.max(1, s.w * 20 - 1.5), height: Math.max(1, s.h * 14 - 1.5), rx: 1.5 };
+    for (const [k, v] of Object.entries(at)) r.setAttribute(k, v);
+    r.setAttribute('stroke', c);
+    r.setAttribute('fill', !own || s.hwnd === own ? c : 'none');
+    if (!own) r.setAttribute('fill-opacity', '0.35');
+    svg.append(r);
+  }
+  return svg;
+}
+
 // Rows are the navigable stops. Multi-window apps get a header row plus one row per window.
 // The music app isn't a group, but it's the last column for Tab / arrows / search (drawn as the
 // music strip). No music provider: no strip, no column.
 function buildCols() {
+  const byHwnd = new Map(model.groups.flatMap((g) => g.apps).concat(model.music || []).flatMap((app) => app.windows.map((win) => [win.hwnd, { app, win }])));
+  slotOf = new Map();
+  const split = (model.layouts || []).map((layout) => {
+    const parts = layout.slots.filter((s) => byHwnd.has(s.hwnd)).map((slot) => ({ ...byHwnd.get(slot.hwnd), slot }));
+    for (const p of parts) slotOf.set(p.win.hwnd, layout);
+    return { key: `l:${layout.id}`, kind: 'layout', group: SPLIT, layout, parts };
+  }).filter((r) => r.parts.length >= 2);
   // col.group: the group a column belongs to, kept on the array so empty groups still render (drop targets).
   cols = model.groups
     .filter((g) => g.id !== 'other' || g.apps.length)
@@ -28,10 +64,11 @@ function buildCols() {
       if (!app.running) return [{ key: `app:${app.id}`, app, group: g, kind: 'closed' }];
       if (app.windows.length === 1) return [{ key: `w:${app.windows[0].hwnd}`, app, group: g, kind: 'single', win: app.windows[0] }];
       return [
-        { key: `app:${app.id}`, app, group: g, kind: 'multi', win: app.windows[0] },
+        { key: `app:${app.id}`, app, group: g, kind: 'multi', win: latest(app.windows) }, // Enter: its most recent window
         ...app.windows.map((win) => ({ key: `w:${win.hwnd}`, app, group: g, kind: 'sub', win })),
       ];
     }), { group: g }));
+  if (split.length) cols.unshift(Object.assign(split, { group: SPLIT }));
   const m = model.music;
   if (!m) return;
   const strip = { id: 'music', name: m.name };
@@ -41,8 +78,9 @@ function buildCols() {
 }
 
 const q = () => $filter.value.trim().toLowerCase();
-const names = (r) => [r.app.name, ...(r.app.aliases || [])].map((n) => n.toLowerCase()); // aliases: nicknames ("arc" finds Dia)
-const isMatch = (r) => !q() || `${names(r).join(' ')} ${r.win?.title || ''}`.toLowerCase().includes(q());
+const names = (r) => (r.parts ? r.parts.map((p) => p.app) : [r.app]).flatMap((a) => [a.name, ...(a.aliases || [])]).map((n) => n.toLowerCase()); // aliases: nicknames ("arc" finds Dia)
+const titles = (r) => (r.parts ? r.parts.map((p) => p.win.title).join(' ') : r.win?.title || '');
+const isMatch = (r) => !q() || `${names(r).join(' ')} ${titles(r)}`.toLowerCase().includes(q());
 const allRows = () => cols.flat();
 const pos = () => {
   for (let c = 0; c < cols.length; c++) {
@@ -63,6 +101,13 @@ function render() {
     const g = col.group;
     if (!g || g.id === 'music') continue;
     const box = h('div', 'group');
+    if (g === SPLIT) { // not a real group: no count, no renaming, nothing drops into it
+      box.classList.add('split');
+      box.append(h('h2', null, g.name));
+      for (const r of col) box.append(rowEl(r));
+      $groups.append(box);
+      continue;
+    }
     box.dataset.group = g.id;
     if (dnd && g.ping) box.classList.add('social-dnd');
     const head = h('h2', null, g.name);
@@ -85,6 +130,7 @@ function render() {
   document.getElementById('panel').append(zonesEl(!$groups.querySelector('[data-group="other"]')));
   renderMusic();
   renderEvent();
+  markMirrors();
   for (const b of document.querySelectorAll('#modes button')) b.classList.toggle('on', b.dataset.mode === model.socialMode);
   document.getElementById('voice').classList.toggle('on', !!model.voice); // voiceHints() is null while voice is off
   const side = Object.entries(SIDE).filter(([k]) => model.panels[k] && (k !== 'music' || model.music)).map(([, name]) => name);
@@ -95,7 +141,26 @@ function render() {
   document.querySelector('.row.sel')?.scrollIntoView({ block: 'nearest' });
 }
 
+// A layout row: its map, its windows' titles in reading order, and their apps.
+function layoutRowEl(r) {
+  const el = h('div', 'row layout');
+  if (r.key === sel) el.classList.add('sel');
+  if (!isMatch(r)) el.classList.add('dim');
+  const icon = h('div', 'icon');
+  icon.append(layoutGlyph(r.layout));
+  const text = h('div', 'text');
+  text.append(h('div', 'name', r.parts.map((p) => cleanTitle(p.win.title, p.app.name) || p.app.name).join(' · ')));
+  text.append(h('div', 'sub', [...new Set(r.parts.map((p) => p.app.name))].join(' · ')));
+  el.append(icon, text);
+  el.title = 'Brings back the whole split screen';
+  el.onclick = () => { sel = r.key; go(r); };
+  el.onmousemove = () => { if (mouseMoved && sel !== r.key) { sel = r.key; markSel(); } };
+  el.dataset.key = r.key;
+  return el;
+}
+
 function rowEl(r) {
+  if (r.kind === 'layout') return layoutRowEl(r);
   const el = h('div', `row ${r.kind === 'closed' ? 'closed' : ''} ${r.kind === 'sub' ? 'win' : ''}`);
   if (r.win?.minimized && r.kind === 'sub') el.classList.add('min');
   if (r.key === sel) el.classList.add('sel');
@@ -114,6 +179,8 @@ function rowEl(r) {
   }
   if (r.key === armed) { el.classList.add('armed'); text.append(h('div', 'sub', armText(r))); }
   el.append(text);
+  const lay = r.win && r.kind !== 'multi' && slotOf.get(r.win.hwnd);
+  if (lay) el.append(layoutGlyph(lay, r.win.hwnd));
   if (r.win && r.win.hwnd === foreground && r.kind !== 'multi') el.append(h('span', 'here', 'here'));
   if (r.kind !== 'sub') {
     if (r.app.unread) el.append(h('span', 'badge', r.app.unread));
@@ -134,7 +201,17 @@ function rowEl(r) {
 function markSel() {
   if (armed && armed !== sel) disarmRow(); // highlight moved off the armed row
   for (const el of document.querySelectorAll('[data-key]')) el.classList.toggle('sel', el.dataset.key === sel);
+  markMirrors();
   document.querySelector('.row.sel')?.scrollIntoView({ block: 'nearest' });
+}
+
+// The mirror cursor: a window of a split screen and its layout row light up together, whichever one is
+// highlighted, so the link shows without leaning on colors (there are only four).
+function markMirrors() {
+  const r = allRows().find((x) => x.key === sel);
+  const lay = r && (r.kind === 'layout' ? r.layout : r.win && r.kind !== 'multi' && slotOf.get(r.win.hwnd));
+  const keys = new Set(!lay ? [] : r.kind === 'layout' ? r.parts.map((p) => `w:${p.win.hwnd}`) : [`l:${lay.id}`]);
+  for (const el of document.querySelectorAll('[data-key]')) el.classList.toggle('mirror', keys.has(el.dataset.key));
 }
 
 function renderMusic() {
@@ -195,13 +272,17 @@ function renderEvent() {
 }
 
 function go(r) {
-  if (r.kind === 'closed') cubby.send('launch', r.app.id, r.app.launch);
+  if (r.kind === 'layout') cubby.send('activate-layout', r.layout.id);
+  else if (r.kind === 'closed') cubby.send('launch', r.app.id, r.app.launch);
   else cubby.send('activate', r.win.hwnd);
 }
 
-// Tab / hotkey: next OPEN window in fixed layout order (closed apps and multi headers skipped).
+// Tab / hotkey: next OPEN window (closed apps, multi headers and split-screen rows skipped: the layout
+// rides along as the mirror cursor, so a split screen of two is two stops), in the board's order, or most
+// recent first (Settings: tabOrder 'recent', like Windows).
 function cycle(dir) {
   const stops = allRows().filter((r) => (r.kind === 'single' || r.kind === 'sub') && isMatch(r));
+  if (model.tabOrder === 'recent') stops.sort((a, b) => rank(a.win.hwnd) - rank(b.win.hwnd));
   if (!stops.length) return;
   const i = stops.findIndex((r) => r.key === sel);
   sel = stops[(i + dir + stops.length) % stops.length].key;
@@ -255,7 +336,7 @@ const armText = (r) => `${deleteKey().quit ? `Quit ${r.app.name}?` : 'Close?'} D
 let armTimer;
 function closeSelected() {
   const r = allRows().find((x) => x.key === sel);
-  if (!r || r.kind === 'closed') return;
+  if (!r || r.kind === 'closed' || r.kind === 'layout') return;
   clearTimeout(armTimer);
   if (armed === r.key || !deleteKey().confirm) {
     armed = null;
@@ -282,7 +363,7 @@ $filter.addEventListener('input', () => {
   // App name beats window title (a chat app showing "#announcements" must not win "nt" over an app named nt),
   // then open windows beat closed apps, then layout order (sort is stable).
   const name = (r) => { const n = names(r); return n.some((x) => x.startsWith(q())) ? 0 : n.some((x) => x.includes(q())) ? 1 : 2; };
-  const shut = (r) => (r.kind === 'closed' || r.kind === 'multi' ? 1 : 0);
+  const shut = (r) => (r.kind === 'closed' || r.kind === 'multi' || r.kind === 'layout' ? 1 : 0);
   const best = allRows().filter(isMatch).sort((a, b) => name(a) - name(b) || shut(a) - shut(b))[0];
   if (best) sel = best.key;
   render();
@@ -397,7 +478,7 @@ function editsReset() {
 
 // ---- Drag: apps and group headers ----------------------------------------------------
 
-const appInfo = (r) => ({ id: r.app.id, name: r.app.name, exePath: r.app.exePath, bundleId: r.app.bundleId, title: (r.win || r.app.windows[0])?.title || '', running: r.app.running });
+const appInfo = (r) => ({ id: r.app.id, name: r.app.name, exePath: r.app.exePath, bundleId: r.app.bundleId, appId: r.app.appId, title: (r.win || r.app.windows[0])?.title || '', running: r.app.running });
 
 function pressApp(e, r) {
   if (e.button !== 0 || drag || e.target.closest('button, input')) return;

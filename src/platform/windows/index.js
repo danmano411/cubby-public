@@ -34,6 +34,8 @@ const RegisterWindowMessageW = user32.func('uint32_t __stdcall RegisterWindowMes
 const OpenProcess = kernel32.func('intptr_t __stdcall OpenProcess(uint32_t access, bool inherit, uint32_t pid)');
 const CloseHandle = kernel32.func('bool __stdcall CloseHandle(intptr_t h)');
 const QueryFullProcessImageNameW = kernel32.func('bool __stdcall QueryFullProcessImageNameW(intptr_t h, uint32_t flags, void *buf, void *size)');
+const FindWindowExW = user32.func('intptr_t __stdcall FindWindowExW(intptr_t parent, intptr_t after, str16 cls, str16 title)');
+const GetApplicationUserModelId = kernel32.func('long __stdcall GetApplicationUserModelId(intptr_t h, void *len, void *buf)');
 const DwmGetWindowAttribute = dwmapi.func('int __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, void *buf, uint32_t size)');
 
 const KBDLLHOOKSTRUCT = koffi.struct('KBDLLHOOKSTRUCT', { vkCode: 'uint32_t', scanCode: 'uint32_t', flags: 'uint32_t', time: 'uint32_t', extra: 'uintptr_t' });
@@ -85,6 +87,39 @@ function pidOf(hwnd) {
   return buf.readUInt32LE();
 }
 
+// The process's AppUserModelID (Store apps), '' for plain desktop processes.
+function appIdForPid(pid) {
+  const h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+  if (!h) return '';
+  const len = Buffer.alloc(4);
+  len.writeUInt32LE(256);
+  const buf = Buffer.alloc(512);
+  const ok = GetApplicationUserModelId(h, len, buf) === 0;
+  CloseHandle(h);
+  return ok ? buf.toString('utf16le', 0, (len.readUInt32LE() - 1) * 2) : '';
+}
+
+// Store (UWP) apps like Settings and Calculator sit in a frame owned by ApplicationFrameHost.exe,
+// shared by all of them; the real app owns the frame's Windows.UI.Core.CoreWindow child. While the
+// app is minimized or suspended that CoreWindow is top-level instead, titled like the frame, so the
+// child's answer is kept per frame and the title is the fallback (e.g. Cubby restarted meanwhile).
+// -> { pid, appId } or null (not found, or two such windows share the title: the caller keeps the host).
+const CORE_WINDOW = 'Windows.UI.Core.CoreWindow';
+const uwpCache = new Map(); // frame hwnd -> { pid, appId }
+function uwpApp(frame, framePid, title) {
+  if (uwpCache.has(frame)) return uwpCache.get(frame);
+  for (let c = 0; (c = Number(FindWindowExW(frame, c, CORE_WINDOW, null)));) {
+    const pid = pidOf(c);
+    if (pid === framePid) continue;
+    const app = { pid, appId: appIdForPid(pid) };
+    uwpCache.set(frame, app);
+    return app;
+  }
+  const pids = [];
+  for (let c = 0; (c = Number(FindWindowExW(0, c, CORE_WINDOW, title)));) pids.push(pidOf(c));
+  return pids.length === 1 && pids[0] !== framePid ? { pid: pids[0], appId: appIdForPid(pids[0]) } : null;
+}
+
 function isCloaked(hwnd) {
   const buf = Buffer.alloc(4);
   return DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, buf, 4) === 0 && buf.readUInt32LE() !== 0;
@@ -93,6 +128,7 @@ function isCloaked(hwnd) {
 // Alt-Tab-style filter: visible, uncloaked, unowned, titled, not a tool window.
 function listWindows({ excludePid } = {}) {
   const out = [];
+  for (const h of uwpCache.keys()) if (!IsWindow(h)) uwpCache.delete(h);
   EnumWindows((hwnd) => {
     if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GW_OWNER)) return true;
     const ex = Number(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
@@ -100,11 +136,14 @@ function listWindows({ excludePid } = {}) {
     if (isCloaked(hwnd)) return true;
     const title = readStr(GetWindowTextW, hwnd);
     if (!title) return true;
-    if (SHELL_CLASSES.has(readStr(GetClassNameW, hwnd))) return true;
-    const pid = pidOf(hwnd);
+    const cls = readStr(GetClassNameW, hwnd);
+    if (SHELL_CLASSES.has(cls)) return true;
+    let pid = pidOf(hwnd);
     if (pid === excludePid) return true;
+    const uwp = cls === 'ApplicationFrameWindow' ? uwpApp(Number(hwnd), pid, title) : null;
+    if (uwp) pid = uwp.pid;
     const exePath = exeForPid(pid);
-    out.push({ hwnd: Number(hwnd), title, pid, exePath, exe: path.basename(exePath).toLowerCase(), minimized: IsIconic(hwnd) });
+    out.push({ hwnd: Number(hwnd), title, pid, exePath, exe: path.basename(exePath).toLowerCase(), ...(uwp?.appId && { appId: uwp.appId }), minimized: IsIconic(hwnd) });
     return true;
   }, 0);
   return out;
@@ -132,6 +171,17 @@ function focus(hwnd) {
   keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
   BringWindowToTop(hwnd);
   return SetForegroundWindow(hwnd);
+}
+
+// Split screen (src/snap.js). IsWindowArranged ("snapped": halves, thirds, quarters) is in user32
+// from Windows 10 1903 but in no header, hence the try. raise() brings a layout partner up by
+// activating it like focus(): a no-activate SetWindowPos(HWND_TOP) is refused for another app's
+// window (tested). A hung partner is skipped: activating it could stall this thread, and the hook.
+let IsWindowArranged = () => false;
+try { IsWindowArranged = user32.func('bool __stdcall IsWindowArranged(intptr_t hwnd)'); } catch {}
+const IsHungAppWindow = user32.func('bool __stdcall IsHungAppWindow(intptr_t hwnd)');
+function raise(hwnd) {
+  if (!IsHungAppWindow(hwnd)) focus(hwnd);
 }
 
 // Bring one of OUR windows to the front. The hook swallows the hotkey, so Windows may not count
@@ -283,8 +333,9 @@ function launch(l) {
   else if (l.exe) shell.openPath(expand(l.exe));
 }
 
-// explorer.exe also runs the taskbar/desktop: close its windows, never kill the process.
-const isProtected = (t) => t.exe === 'explorer.exe';
+// explorer.exe also runs the taskbar/desktop, and ApplicationFrameHost.exe frames every Store app
+// (listWindows only reports it when it couldn't find the real app): close their windows, never kill the process.
+const isProtected = (t) => t.exe === 'explorer.exe' || t.exe === 'applicationframehost.exe';
 
 // Force-quit one app process (and its children), e.g. a tray app whose windows are gone.
 // target: { pid, exe } as from listWindows. Returns false for protected processes.
@@ -386,6 +437,8 @@ module.exports = {
   isWindow: (hwnd) => IsWindow(hwnd),
   foreground: () => Number(GetForegroundWindow()),
   windowRect,
+  isArranged: (hwnd) => !!IsWindowArranged(hwnd),
+  raise,
   handleOf,
   mediaKey,
   parseAccelerator,

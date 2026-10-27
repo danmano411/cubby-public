@@ -6,7 +6,8 @@ const catalog = require('./catalog');
 const { RESERVED_GROUP_IDS } = require('./schema');
 
 const RESERVED = ['other', 'music']; // names the tray draws itself (ids: RESERVED_GROUP_IDS, which adds 'new')
-const GENERIC_HOSTS = ['pythonw', 'python', 'python3', 'java', 'javaw', 'electron', 'node'];
+// applicationframehost: Store apps whose real app wasn't found (listWindows); it frames all of them.
+const GENERIC_HOSTS = ['pythonw', 'python', 'python3', 'java', 'javaw', 'electron', 'node', 'applicationframehost'];
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const entryId = catalog.entryId;
@@ -189,12 +190,13 @@ function pickAppId(installed, names) {
 
 function launchFor(info, installed, catalogName, platform) {
   if (platform === 'mac') return info.bundleId ? { bundleId: info.bundleId } : info.exePath ? { exe: info.exePath } : null;
+  if (info.appId) return { appId: info.appId }; // a Store app's own AppID (listWindows)
   const appId = pickAppId(installed, [stripExe(baseName(info.exePath || info.exe)), info.name, catalogName]);
   if (appId) return { appId };
   return info.exePath ? { exe: info.exePath } : null;
 }
 
-// info: { id, name, exePath, title?, bundleId? } of a running app (a model app) ->
+// info: { id, name, exePath, title?, bundleId?, appId? } of a running app (a model app) ->
 //   { id, entry, override?, note?, category }
 // Catalog apps become the catalog id (override fills in a launch the catalog can't know, e.g. IntelliJ's
 // versioned path). Others get an inline entry. Generic hosts (pythonw, java, ...) match by window title too.

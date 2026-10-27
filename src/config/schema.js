@@ -26,6 +26,10 @@ const DEFAULTS = {
   // Next event in the tray, from Notion Calendar's copy on this computer (notion) and/or private calendar
   // links (.ics); a toast notifyMinutes before each one if notify.
   calendar: { notion: true, urls: [], notify: false, notifyMinutes: 5, app: 'notion-calendar' },
+  // Tab order in an Alt+Tab session: 'layout' (the board, left to right) or 'recent' (most recently used
+  // first, like Windows). raiseSnapPartners: picking one window of a split screen brings back the rest too
+  // (Windows brings back only that window; users expected the split screen).
+  switcher: { tabOrder: 'layout', raiseSnapPartners: true },
   apps: {}, // per-app overrides by id: name, aliases (search nicknames), tint, badgeOffset, launch fields
 };
 // Group ids the tray uses for its own columns: Other, the music strip and the "+ New group" drop zone.
@@ -67,6 +71,7 @@ function withDefaults(c) {
     voice: { ...d.voice, ...v, commands: { ...d.voice.commands, ...v.commands }, thresholds: { ...d.voice.thresholds, ...v.thresholds } },
     labels: { ...d.labels, ...c.labels },
     calendar: { ...d.calendar, ...c.calendar },
+    switcher: { ...d.switcher, ...c.switcher },
     deleteKey: c.deleteKey != null && !isObj(c.deleteKey) ? c.deleteKey : { ...d.deleteKey, ...c.deleteKey }, // a non-object is left for validate
     apps: { ...c.apps },
   };
@@ -176,6 +181,12 @@ function validate(c, platform) {
   if (c.deleteKey != null) {
     if (!isObj(c.deleteKey)) err('deleteKey must be an object');
     else for (const k of ['confirm', 'macQuit']) if (c.deleteKey[k] != null && typeof c.deleteKey[k] !== 'boolean') err(`deleteKey.${k} must be true or false`);
+  }
+  const sw = c.switcher;
+  if (!isObj(sw)) err('switcher must be an object');
+  else {
+    if (!['layout', 'recent'].includes(sw.tabOrder)) err("switcher.tabOrder must be 'layout' or 'recent'");
+    if (typeof sw.raiseSnapPartners !== 'boolean') err('switcher.raiseSnapPartners must be true or false');
   }
   const k = c.calendar;
   if (!isObj(k)) err('calendar must be an object');

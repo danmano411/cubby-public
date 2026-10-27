@@ -79,6 +79,8 @@ It stays out of the way until you press the key, and it is built to be set up by
 
 **Drag to group.** Open the tray, grab an app, drop it on a group. Drop it on **New group** to create one (the name is pre-filled with a sensible guess). It is saved immediately, and `Ctrl+Z` / `Ctrl+Y` (`Cmd+Z` / `Cmd+Shift+Z` on macOS) undo and redo any change to your groups while the tray is open.
 
+**Split screen (Windows).** Cubby remembers the layouts you snap, whether a left/right pair, a quad, or a half and two quarters, with any mix of apps. Picking any window of a split screen brings the whole layout back, focused on the window you picked. A **Split screen** column lists each layout. Every window in a layout carries a small map of it, in the layout's color, with its own slot filled, so two pairs never look alike. While a split-screen window is highlighted, its layout row is outlined too. Settings can turn the bring-back-together off, or make `Tab` step through windows most recently used first, like Windows.
+
 **Multiple monitors.** The tray opens on the screen your mouse is on. By default the side panels and toasts follow the window you are working in: focus a window on your external monitor and they move to its right edge, switch to a window on your laptop screen and they come back. Clicking the desktop or minimizing everything leaves them where they are. In Settings you can pin them instead to your primary screen, to whichever screen the mouse is on, or to a specific monitor. Cubby handles mixed scaling (a 150% monitor next to a 250% one) and monitors arranged above or to the left of the primary, and re-lays everything out when you plug in or unplug a screen.
 
 ## Keyboard
@@ -192,6 +194,8 @@ The catalog is plain JSON: [`src/config/catalog/windows.json`](src/config/catalo
 `match` says which running windows belong to the app (`exe` on Windows, `bundleId` on macOS, optionally `title` for apps that run under a generic host). `launch` says how to start it (`appId`, `exe` or `uri` on Windows, `bundleId` on macOS). `badgeOffset`, `tint` and `note` are optional quirks. Use the same `id` on both platforms where the app exists on both. Pull requests are welcome, or open an [issue](https://github.com/danmano411/cubby-public/issues/new/choose) with the process or bundle id and Cubby's maintainers will add it.
 
 ## Uninstalling
+
+The tray icon's menu (and Settings → Startup & voice) has **Disable Cubby…**, which closes it and stops it starting with your computer until you open it again, and **Uninstall Cubby…**.
 
 **Windows:** Settings → Apps → Installed apps → Cubby → Uninstall. Your config stays in `%APPDATA%\Cubby` so a reinstall picks up where you left off; delete the folder to remove it.
 **macOS:** quit Cubby, drag it from Applications to the Trash, and delete `~/Library/Application Support/Cubby` if you want your settings gone.

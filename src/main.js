@@ -2,11 +2,13 @@ const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, shell, dia
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawn } = require('child_process');
 const adapter = require('./platform');
 const schema = require('./config/schema');
 const catalog = require('./config/catalog');
 const music = require('./music/index'); // not './music': that's the renderer's music.js
 const layout = require('./layout');
+const snap = require('./snap');
 const { buildModel, findApp, appForWindow, badgeFor, badgeGrew, pingText, pingApps, allApps, hour12From } = require('./model');
 const session = require('./session');
 const { initUpdater } = require('./updater');
@@ -111,12 +113,12 @@ function snapshot() {
   if (model.music) model.music.nowPlaying = provider.nowPlaying(model.music);
   const byId = {};
   for (const a of [...model.groups.flatMap((g) => g.apps), model.music].filter(Boolean)) {
-    const t = adapter.iconTarget(findApp(rc, a.id) || { launch: { exe: a.exePath } });
+    const t = adapter.iconTarget(findApp(rc, a.id) || { launch: a.appId ? { appId: a.appId } : { exe: a.exePath } });
     if (t && icons[t]) byId[a.id] = icons[t];
     else if (t) wantIcon(t);
   }
   const tints = Object.fromEntries(allApps(rc).filter((a) => a.tint).map((a) => [a.id, a.tint]));
-  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, clock: { hour12: clockHour12 }, nextEvent: calendar.next(), keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() } };
+  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, clock: { hour12: clockHour12 }, nextEvent: calendar.next(), keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() }, layouts: layouts.map(snap.describe), recent: mru, tabOrder: config.switcher.tabOrder };
 }
 
 const quitOnDelete = () => process.platform === 'darwin' && config.deleteKey?.macQuit !== false;
@@ -237,7 +239,11 @@ function showOverlay({ altSession = false } = {}) {
   foregroundAtOpen = adapter.foreground();
   place(overlay, layout.overlayBounds(cursorDisplay()));
   // Window lists are most recently used first: the first other window is "previous".
-  const previous = adapter.listWindows({ excludePid: process.pid }).find((w) => w.hwnd !== foregroundAtOpen && !w.minimized)?.hwnd || 0;
+  // "Previous" is the window you were in before, from the activation history (a raised split-screen
+  // partner or an always-on-top window you never used doesn't count). Without history, the z-order.
+  const wins = adapter.listWindows({ excludePid: process.pid });
+  const ok = (h) => h !== foregroundAtOpen && wins.some((w) => w.hwnd === h && !w.minimized);
+  const previous = mru.find(ok) || wins.find((w) => ok(w.hwnd))?.hwnd || 0;
   overlay.webContents.send('open', { ...snapshot(), foreground: foregroundAtOpen, previous, altSession });
   overlay.show();
   overlay.focus();
@@ -307,6 +313,35 @@ function applyLoginItem(on) {
   adapter.removeStaleLoginItems(APP_ID, [process.execPath, ...args]);
 }
 
+// ---- Disable / uninstall (tray menu, Settings > Startup) --------------------------
+// Disable: Cubby closes and stops starting at login until it's opened again (startup re-applies
+// config.startAtLogin, so opening it is the whole undo). Uninstall: Windows runs Cubby's own
+// uninstaller (settings stay in %APPDATA%\Cubby); macOS has none, so Finder shows the app to trash.
+const AT_LOGIN = process.platform === 'darwin' ? 'at login' : 'with Windows';
+async function disableCubby() {
+  const { response } = await dialog.showMessageBox({ type: 'question', title: 'Disable Cubby', message: 'Turn Cubby off?', buttons: ['Disable', 'Cancel'], defaultId: 0, cancelId: 1, noLink: true,
+    detail: `Cubby closes, your app switcher key goes back to the system's own, and Cubby won't start ${AT_LOGIN}. Open Cubby again any time to turn it back on.` });
+  if (response !== 0) return;
+  applyLoginItem(false);
+  quit();
+}
+async function uninstallCubby() {
+  const mac = process.platform === 'darwin';
+  const uninstaller = path.join(path.dirname(process.execPath), 'Uninstall Cubby.exe');
+  if (!app.isPackaged || (!mac && !fs.existsSync(uninstaller))) {
+    dialog.showMessageBox({ type: 'info', title: 'Uninstall Cubby', message: "This copy of Cubby wasn't installed, so there's nothing to uninstall.", detail: mac ? '' : 'Installed copies are removed in Settings > Apps > Installed apps.' });
+    return;
+  }
+  const { response } = await dialog.showMessageBox({ type: 'warning', title: 'Uninstall Cubby', message: 'Uninstall Cubby?', buttons: [mac ? 'Show in Finder' : 'Uninstall', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
+    detail: mac ? 'Cubby will quit and Finder will show it: drag it to the Trash. Your settings stay in ~/Library/Application Support/Cubby; delete that folder to remove them too.'
+      : 'Cubby will close and remove itself from this PC. Your settings stay in %APPDATA%\\Cubby, so reinstalling picks up where you left off; delete that folder to remove them too.' });
+  if (response !== 0) return;
+  applyLoginItem(false);
+  if (mac) shell.showItemInFolder(path.resolve(process.execPath, '../../..')); // Cubby.app
+  else spawn(uninstaller, [], { detached: true, stdio: 'ignore' }).unref();
+  quit();
+}
+
 function setStartAtLogin(on) {
   config.startAtLogin = on;
   saveConfig();
@@ -323,7 +358,62 @@ function setTakeOver(on) {
 
 function activate(hwnd) {
   if (!adapter.isWindow(hwnd)) return push();
+  const l = config.switcher.raiseSnapPartners && layouts.find((x) => x.members.some((m) => m.hwnd === hwnd));
+  if (l) return activateLayout(l.id, hwnd);
+  focusSafely(hwnd);
+  hideOverlay();
+}
+
+// The low-level hook runs on this thread, and Windows silently drops it if it waits over ~1s, e.g.
+// while restoring a hung app's window. No API says whether that happened, so reinstall after a slow one.
+// ponytail: guessed from elapsed time; a hook on its own thread would remove the problem.
+function focusSafely(hwnd) {
+  const t = Date.now();
   adapter.focus(hwnd);
+  if (Date.now() - t > 800) { ev('slow focus', Date.now() - t); installHook(); }
+}
+
+// ---- Split screen (src/snap.js) ------------------------------------------------
+// Windows shows each snap layout as an extra Alt+Tab entry that brings all of its windows back, with
+// no API to read them, so Cubby records what you see: whenever the focused window is snapped and the
+// snapped windows in view tile its display, that's a layout. mru: activation history, newest first.
+// Saved so a restart (monitor change, crash) keeps them: window handles outlive Cubby, and prune
+// drops any that no longer match.
+const LAYOUTS = path.join(DATA, 'layouts.json');
+let layouts = [];
+try { layouts = JSON.parse(fs.readFileSync(LAYOUTS, 'utf8')); } catch {}
+if (!Array.isArray(layouts)) layouts = [];
+let layoutSeq = Math.max(0, ...layouts.map((l) => l.id));
+let lastSnapWins = []; // the last look, to tell a fresh snap from a window that was already there
+const snappedAt = new Map(); // hwnd -> when it was last snapped into place
+const mru = [];
+const raisedOnly = new Set(); // partners activated to bring a layout back: not "used", so not in mru
+function snapWindows() {
+  return adapter.listWindows({ excludePid: process.pid }).map((w) => ({ hwnd: w.hwnd, minimized: w.minimized, arranged: !w.minimized && adapter.isArranged(w.hwnd), rect: adapter.windowRect(w.hwnd) }));
+}
+function trackLayouts(hwnd) {
+  if (process.platform !== 'win32') return; // Snap layouts are Windows-only (mac's isArranged is always false)
+  const before = JSON.stringify(layouts);
+  const wins = snapWindows();
+  for (const w of snap.justSnapped(lastSnapWins, wins)) snappedAt.set(w.hwnd, Date.now());
+  layouts = snap.prune(layouts, wins);
+  lastSnapWins = wins;
+  const seen = hwnd && wins.find((w) => w.hwnd === hwnd)?.arranged && snap.visibleLayout(wins, screen.getAllDisplays(), hwnd);
+  if (snap.worth(layouts, wins, seen, snappedAt, Date.now())) layouts = snap.remember(layouts, seen, layoutSeq + 1, Date.now());
+  if (JSON.stringify(layouts) !== before) {
+    layoutSeq = Math.max(layoutSeq, ...layouts.map((l) => l.id));
+    try { fs.writeFileSync(LAYOUTS, JSON.stringify(layouts)); } catch {}
+  }
+}
+// Partners first, then the one to focus: the window you asked for, else the member you used last.
+// raise() activates (Windows refuses anything quieter), so partners stay out of the history.
+function activateLayout(id, focusHwnd) {
+  const l = layouts.find((x) => x.id === id);
+  if (!l) return push();
+  const live = l.members.map((m) => m.hwnd).filter((h) => adapter.isWindow(h));
+  const target = focusHwnd || mru.find((h) => live.includes(h)) || live[0];
+  for (const h of live) if (h !== target) { raisedOnly.add(h); adapter.raise(h); }
+  focusSafely(target);
   hideOverlay();
 }
 
@@ -612,6 +702,13 @@ function onActivated(hwnd) {
   followPanels();
   if (!hwnd) return;
   const w = adapter.listWindows().find((x) => x.hwnd === hwnd);
+  if (w && w.pid !== process.pid && !raisedOnly.delete(hwnd)) {
+    const i = mru.indexOf(hwnd);
+    if (i >= 0) mru.splice(i, 1);
+    mru.unshift(hwnd);
+    mru.length = Math.min(mru.length, 100);
+    trackLayouts(hwnd);
+  }
   const a = w && appForWindow(runtime(), w);
   if (a && pings[a.id]) { delete pings[a.id]; push(); }
 }
@@ -799,6 +896,8 @@ function buildTrayMenu() {
       { label: 'Open log', click: () => shell.openPath(EVENTS) },
     ] },
     { label: 'Refresh Cubby', click: () => restart('manual') },
+    { label: 'Disable Cubby…', click: disableCubby },
+    { label: 'Uninstall Cubby…', click: uninstallCubby },
     { label: 'Quit Cubby', click: quit },
   ]));
 }
@@ -817,7 +916,7 @@ function registerFeatures() {
     BrowserWindow, app, log,
     // extras
     schema, runtime, applyConfig, relayout: relayoutAll, place, notify, makeWindow, smoke: SMOKE,
-    cursorDisplay, pauseKeys, applyLoginItem, hour12: () => clockHour12,
+    cursorDisplay, pauseKeys, applyLoginItem, disableCubby, uninstallCubby, hour12: () => clockHour12,
     iconOf: (id) => { const a = findApp(runtime(), id); return a ? icons[adapter.iconTarget(a)] : undefined; },
   };
   for (const f of [edits, require('./features/setup'), calendar]) f.register(ctx);
@@ -976,12 +1075,16 @@ app.whenReady().then(() => {
   app.on('child-process-gone', (_, d) => ev('process gone', d.type, d.reason, d.exitCode));
   app.on('before-quit', () => { restarting = true; }); // the updater's quitAndInstall: its window teardown isn't a crash
   for (const [name, w] of Object.entries(cubbyWindows())) {
-    w.webContents.on('render-process-gone', (_, d) => { ev('renderer gone', name, d.reason); if (d.reason !== 'clean-exit') crashed(`${name} renderer ${d.reason}`); });
+    // A second's grace: when Cubby itself is being ended (Task Manager kills all its processes), a page
+    // can go a moment before main does, and that must not relaunch it.
+    w.webContents.on('render-process-gone', (_, d) => { ev('renderer gone', name, d.reason); if (d.reason !== 'clean-exit') setTimeout(() => crashed(`${name} renderer ${d.reason}`), 1000); });
     // Frozen pages: give it 5s to come back (a busy moment after wake), then restart.
     let frozen;
     w.on('unresponsive', () => { ev('unresponsive', name); frozen = frozen || setTimeout(() => crashed(`${name} unresponsive`), 5000); });
     w.on('responsive', () => { clearTimeout(frozen); frozen = null; });
   }
+  // Activation history starts from the stacking order, which is close to most recently used (Alt+Tab's own old rule).
+  mru.push(...adapter.listWindows({ excludePid: process.pid }).map((w) => w.hwnd));
   setInterval(installHook, 60000);
   // The screen can go off and on with no power event at all (docs/07 E3), so also check the shown
   // panels every 5 minutes; logged only when one isn't painting.
@@ -1002,6 +1105,7 @@ app.whenReady().then(() => {
   buildTrayMenu();
 
   ipcMain.on('activate', (_, hwnd) => activate(hwnd));
+  ipcMain.on('activate-layout', (_, id) => activateLayout(id));
   ipcMain.on('launch', (_, id, l) => { const a = findApp(runtime(), id)?.launch || l; if (a) adapter.launch(a); hideOverlay(); });
   ipcMain.on('context', (_, info) => appContext(info));
   ipcMain.on('side-menu', (_, at) => {
@@ -1023,10 +1127,10 @@ ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('open-all', openAll);
   ipcMain.on('close-all', closeAll);
   ipcMain.on('close-row', (_, p) => closeRow(p?.hwnds));
-  ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) adapter.focus(hwnd); });
+  ipcMain.on('toast-click', (_, hwnd) => { toast.hide(); if (hwnd) activate(hwnd); });
   ipcMain.on('toast-close', () => toast.hide());
 
-  setInterval(() => { push(); followPanels(); keepPanelsOnTop(); checkScale(); }, 1000); // followPanels also catches a window dragged to another display
+  setInterval(() => { trackLayouts(adapter.foreground()); push(); followPanels(); keepPanelsOnTop(); checkScale(); }, 1000); // followPanels also catches a window dragged to another display
   initUpdater(log);
   const stopBadges = adapter.startBadgeWatcher(onBadges);
   app.on('will-quit', stopBadges);

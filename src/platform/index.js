@@ -8,6 +8,8 @@
 //   windowRect(win, { excludePid }) -> { x, y, width, height } | null   on-screen rect in DIP (Electron's
 //                                  screen space); null when minimized / hidden / cloaked, the desktop /
 //                                  taskbar, or a window of excludePid
+//   isArranged(win) -> bool        snapped (split screen, src/snap.js); mac: always false
+//   raise(win)                     bring a layout partner up (Windows: activates it; the window focused last ends on top)
 //   handleOf(browserWindow) -> win              our own Electron window as a handle for focus()
 //   forceForeground(win) -> bool   (optional)   bring one of OUR windows to the front without synthetic input
 //   keepOnTop(win) -> bool         lift one of OUR topmost windows back above ordinary windows if it slipped

@@ -134,3 +134,11 @@ body.dragging.denied, body.dragging.denied * { cursor: not-allowed !important; }
 .edit-toast button { font: inherit; font-weight: 600; font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 3px 12px; cursor: pointer; }
 .edit-toast.error { border-color: var(--danger); padding-right: 14px; }
 .edit-toast.undo, .edit-toast.redo, .edit-toast.info { padding-right: 14px; }
+
+/* Split screen: layout rows and the small layout map on their windows' rows (colors per layout, overlay.js) */
+.group.split .row.layout .icon { background: var(--panel-2); border: 1px solid var(--line); }
+.glyph { width: 20px; height: 14px; flex: none; overflow: visible; }
+.row.layout .glyph { width: 22px; height: 16px; }
+.row .glyph rect { stroke-width: 1; }
+/* Mirror cursor: the other half of a highlighted split-screen link (window <-> its layout row) */
+.row.mirror { border-color: var(--accent); border-style: dashed; background: rgba(255, 255, 255, 0.03); }

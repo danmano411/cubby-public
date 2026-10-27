@@ -255,6 +255,8 @@ module.exports = {
   timeFormat: async () => null, // the clock follows the Mac's locale
   forceForeground,
   keepOnTop: () => false, // macOS keeps the floating level; nothing to repair
+  isArranged: () => false, // split-screen layouts (src/snap.js) are a Windows Snap thing; macOS tiling has no groups
+  raise: () => {},
   listWindows,
   focus,
   minimize: windowCmd('minimize'),

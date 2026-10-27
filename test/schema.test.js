@@ -180,6 +180,12 @@ assert.match(bad({ deleteKey: { confirm: 'yes' } }).join(), /deleteKey\.confirm/
 assert.match(bad({ deleteKey: { macQuit: 1 } }).join(), /deleteKey\.macQuit/);
 assert.match(bad({ deleteKey: true }).join(), /deleteKey must be an object/);
 assert.deepStrictEqual(bad({ deleteKey: { confirm: false, macQuit: false } }), []);
+// ---- switcher ----
+assert.deepStrictEqual(schema.DEFAULTS.switcher, { tabOrder: 'layout', raiseSnapPartners: true });
+assert.deepStrictEqual(schema.withDefaults({ keys: {}, switcher: { tabOrder: 'recent' } }).switcher, { tabOrder: 'recent', raiseSnapPartners: true });
+assert.match(bad({ switcher: { tabOrder: 'mru' } }).join(), /switcher\.tabOrder/);
+assert.match(bad({ switcher: { raiseSnapPartners: 'yes' } }).join(), /switcher\.raiseSnapPartners/);
+assert.deepStrictEqual(bad({ switcher: { tabOrder: 'recent', raiseSnapPartners: true } }), []);
 assert.equal(schema.closeVerb('Kill all'), 'Kill');
 assert.equal(schema.closeVerb('  Close all '), 'Close');
 assert.equal(schema.closeVerb(''), 'Close');

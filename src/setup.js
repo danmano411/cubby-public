@@ -349,6 +349,9 @@ function keysPage() {
   out.push(row('search'));
   const dk = S.draft.deleteKey || (S.draft.deleteKey = clone(S.defaults.deleteKey));
   out.push(toggleRow('Ask before Delete closes an app', 'Hover an app in Cubby and press Delete. On: press Delete again (or Enter) to confirm.', !!dk.confirm, (on) => { dk.confirm = on; renderFoot(); }));
+  const sw = S.draft.switcher || (S.draft.switcher = clone(S.defaults.switcher));
+  out.push(toggleRow('Tab goes to the most recent window', 'On: each Tab steps to the next most recently used window, like Windows. Off: after the first Tab, it follows your groups left to right.', sw.tabOrder === 'recent', (on) => { sw.tabOrder = on ? 'recent' : 'layout'; renderFoot(); }));
+  if (!isMac()) out.push(toggleRow('Split screen comes back together', 'On: picking one window of a split screen brings the whole split screen back, with that window focused. Off: only that window comes up, like Windows.', !!sw.raiseSnapPartners, (on) => { sw.raiseSnapPartners = on; renderFoot(); }));
   if (isMac()) out.push(toggleRow('Delete quits the app', 'On: the whole app quits. Off: only that window closes, like its red button.', !!dk.macQuit, (on) => { dk.macQuit = on; renderFoot(); }));
   out.push(el('h3', null, 'Music keys'));
   if (S.draft.music.provider === 'none') out.push(el('p', { class: 'note', style: 'margin:-4px 0 8px' }, 'These do nothing while the music player is set to None.'));
@@ -570,6 +573,12 @@ function startupPage() {
   out.push(el('h3', null, 'Close all'));
   out.push(el('div', { class: 'field' }, el('label', null, 'Button label'), el('input', { type: 'text', value: S.draft.labels?.closeAll || '', placeholder: 'Close all', spellcheck: 'false', 'aria-label': 'Button label',
     oninput: (e) => { const t = e.target.value.trim(); S.draft.labels = { ...S.draft.labels, closeAll: t || 'Close all' }; renderFoot(); } }), el('div', { class: 'note', style: 'margin-top:3px' }, 'Optional. The first word is used in the confirm text, like "Close 5 apps?".')));
+  // Also in the tray icon's menu. Both ask first (main shows the dialog).
+  out.push(el('h3', null, 'Turn Cubby off'));
+  out.push(el('div', { class: 'chiprow' },
+    el('button', { class: 'btn small', title: `Close Cubby and stop it starting ${isMac() ? 'at login' : 'with Windows'} until you open it again`, onclick: () => cubby.send('setup:disable') }, 'Disable Cubby'),
+    el('button', { class: 'btn small quiet danger', title: 'Remove Cubby from this computer', onclick: () => cubby.send('setup:uninstall') }, 'Uninstall Cubby')));
+  out.push(el('p', { class: 'note' }, 'Disable closes Cubby and gives your app switcher key back to the system; open Cubby again to turn it back on. Uninstall removes it, and keeps your settings in case you come back.'));
   return out;
 }
 function sayNodes() {
