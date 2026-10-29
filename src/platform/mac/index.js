@@ -257,6 +257,7 @@ module.exports = {
   keepOnTop: () => false, // macOS keeps the floating level; nothing to repair
   isArranged: () => false, // split-screen layouts (src/snap.js) are a Windows Snap thing; macOS tiling has no groups
   raise: () => {},
+  noTransitions: () => true, // a Windows DWM setting
   listWindows,
   focus,
   minimize: windowCmd('minimize'),

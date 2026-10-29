@@ -28,8 +28,8 @@ const DEFAULTS = {
   calendar: { notion: true, urls: [], notify: false, notifyMinutes: 5, app: 'notion-calendar' },
   // Tab order in an Alt+Tab session: 'layout' (the board, left to right) or 'recent' (most recently used
   // first, like Windows). raiseSnapPartners: picking one window of a split screen brings back the rest too
-  // (Windows brings back only that window; users expected the split screen).
-  switcher: { tabOrder: 'layout', raiseSnapPartners: true },
+  // (Windows brings back only that window; users expected the split screen). animate: the tray fades in, edge-hidden side panels slide.
+  switcher: { tabOrder: 'layout', raiseSnapPartners: true, animate: true },
   apps: {}, // per-app overrides by id: name, aliases (search nicknames), tint, badgeOffset, launch fields
 };
 // Group ids the tray uses for its own columns: Other, the music strip and the "+ New group" drop zone.
@@ -187,6 +187,7 @@ function validate(c, platform) {
   else {
     if (!['layout', 'recent'].includes(sw.tabOrder)) err("switcher.tabOrder must be 'layout' or 'recent'");
     if (typeof sw.raiseSnapPartners !== 'boolean') err('switcher.raiseSnapPartners must be true or false');
+    if (typeof sw.animate !== 'boolean') err('switcher.animate must be true or false');
   }
   const k = c.calendar;
   if (!isObj(k)) err('calendar must be an object');

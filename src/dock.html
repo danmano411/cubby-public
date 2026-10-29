@@ -22,6 +22,7 @@
     body[data-edge="pinged"] #edge { --c: 240, 180, 90; background: rgb(var(--c)); box-shadow: 0 0 8px rgba(var(--c), 0.6); }
     body[data-edge="unread"] #edge { --c: 255, 92, 122; background: rgb(var(--c)); animation: breathe 2.4s ease-in-out infinite; }
     @keyframes breathe { 0%, 100% { box-shadow: 0 0 6px rgba(var(--c), 0.45); } 50% { box-shadow: 0 0 14px rgba(var(--c), 0.9); } }
+    .still #dock, .still #edge { transition: none; }
     @media (prefers-reduced-motion: reduce) { #dock, #edge { transition: none; } body[data-edge="unread"] #edge { animation: none; box-shadow: 0 0 10px rgba(var(--c), 0.7); } }
     #dock { width: 64px; margin: 0 2px 0 auto; padding: 8px 0; display: flex; flex-direction: column; align-items: center;
       background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }

@@ -351,6 +351,7 @@ function keysPage() {
   out.push(toggleRow('Ask before Delete closes an app', 'Hover an app in Cubby and press Delete. On: press Delete again (or Enter) to confirm.', !!dk.confirm, (on) => { dk.confirm = on; renderFoot(); }));
   const sw = S.draft.switcher || (S.draft.switcher = clone(S.defaults.switcher));
   out.push(toggleRow('Tab goes to the most recent window', 'On: each Tab steps to the next most recently used window, like Windows. Off: after the first Tab, it follows your groups left to right.', sw.tabOrder === 'recent', (on) => { sw.tabOrder = on ? 'recent' : 'layout'; renderFoot(); }));
+  out.push(toggleRow('Animations', 'On: the tray fades in and side panels hidden at the edge slide in. Off: they just appear.', sw.animate !== false, (on) => { sw.animate = on; renderFoot(); }));
   if (!isMac()) out.push(toggleRow('Split screen comes back together', 'On: picking one window of a split screen brings the whole split screen back, with that window focused. Off: only that window comes up, like Windows.', !!sw.raiseSnapPartners, (on) => { sw.raiseSnapPartners = on; renderFoot(); }));
   if (isMac()) out.push(toggleRow('Delete quits the app', 'On: the whole app quits. Off: only that window closes, like its red button.', !!dk.macQuit, (on) => { dk.macQuit = on; renderFoot(); }));
   out.push(el('h3', null, 'Music keys'));

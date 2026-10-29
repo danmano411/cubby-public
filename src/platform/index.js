@@ -11,6 +11,7 @@
 //   isArranged(win) -> bool        snapped (split screen, src/snap.js); mac: always false
 //   raise(win)                     bring a layout partner up (Windows: activates it; the window focused last ends on top)
 //   handleOf(browserWindow) -> win              our own Electron window as a handle for focus()
+//   noTransitions(browserWindow)                no OS show/hide animation on it (Windows DWM; no-op on mac)
 //   forceForeground(win) -> bool   (optional)   bring one of OUR windows to the front without synthetic input
 //   keepOnTop(win) -> bool         lift one of OUR topmost windows back above ordinary windows if it slipped
 //                                  under them; true = it had to

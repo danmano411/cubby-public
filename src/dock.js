@@ -1,6 +1,7 @@
 // Right-edge bar: the clock (clock.js) and/or the socials strip (every app in a ping group).
 cubby.on('tuck', (on) => document.body.classList.toggle('tucked', on));
 cubby.on('model', (m) => {
+  document.body.classList.toggle('still', m.animate === false); // Settings: Animations, off
   document.getElementById('clock').hidden = !m.panels.clock;
   document.body.classList.toggle('joined', !!(m.panels.music && m.music));
   document.getElementById('split').hidden = !(m.panels.clock && m.panels.socials);

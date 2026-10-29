@@ -37,6 +37,7 @@ const QueryFullProcessImageNameW = kernel32.func('bool __stdcall QueryFullProces
 const FindWindowExW = user32.func('intptr_t __stdcall FindWindowExW(intptr_t parent, intptr_t after, str16 cls, str16 title)');
 const GetApplicationUserModelId = kernel32.func('long __stdcall GetApplicationUserModelId(intptr_t h, void *len, void *buf)');
 const DwmGetWindowAttribute = dwmapi.func('int __stdcall DwmGetWindowAttribute(intptr_t hwnd, uint32_t attr, void *buf, uint32_t size)');
+const DwmSetWindowAttribute = dwmapi.func('int __stdcall DwmSetWindowAttribute(intptr_t hwnd, uint32_t attr, void *buf, uint32_t size)');
 
 const KBDLLHOOKSTRUCT = koffi.struct('KBDLLHOOKSTRUCT', { vkCode: 'uint32_t', scanCode: 'uint32_t', flags: 'uint32_t', time: 'uint32_t', extra: 'uintptr_t' });
 const LowLevelKeyboardProc = koffi.proto('intptr_t __stdcall LowLevelKeyboardProc(int code, uintptr_t wParam, void *lParam)');
@@ -311,6 +312,8 @@ function hookKeys({ switchKey = 'Alt+Tab', takeSwitch = () => true, onSwitch = (
 // ---- Shell events (taskbar flash, activation, window create/destroy) ------------
 const SHELL = { CREATED: 1, DESTROYED: 2, ACTIVATED: 4, RUDE_ACTIVATED: 0x8004, FLASH: 0x8006 };
 const handleOf = (bw) => Number(bw.getNativeWindowHandle().readBigUInt64LE());
+// Windows' own show/hide animation (DWMWA_TRANSITIONS_FORCEDISABLED), off: the page animates itself.
+const noTransitions = (bw) => DwmSetWindowAttribute(handleOf(bw), 3, Buffer.from([1, 0, 0, 0]), 4) === 0;
 
 function onShellEvents(bw, { flash, activate, create, destroy } = {}) {
   RegisterShellHookWindow(handleOf(bw));
@@ -440,6 +443,7 @@ module.exports = {
   isArranged: (hwnd) => !!IsWindowArranged(hwnd),
   raise,
   handleOf,
+  noTransitions,
   mediaKey,
   parseAccelerator,
   hookKeys,

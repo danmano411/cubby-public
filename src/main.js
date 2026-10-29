@@ -118,7 +118,7 @@ function snapshot() {
     else if (t) wantIcon(t);
   }
   const tints = Object.fromEntries(allApps(rc).filter((a) => a.tint).map((a) => [a.id, a.tint]));
-  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, clock: { hour12: clockHour12 }, nextEvent: calendar.next(), keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() }, layouts: layouts.map(snap.describe), recent: mru, tabOrder: config.switcher.tabOrder };
+  return { ...model, icons: byId, tints, socialMode: config.socialMode, panels: config.panels, clock: { hour12: clockHour12 }, nextEvent: calendar.next(), keys: keyLabels(), voice: voiceHints(), labels: { closeAll: config.labels.closeAll, closeVerb: schema.closeVerb(config.labels.closeAll) }, deleteKey: { confirm: config.deleteKey?.confirm !== false, quit: quitOnDelete() }, layouts: layouts.map(snap.describe), recent: mru, tabOrder: config.switcher.tabOrder, animate: config.switcher.animate };
 }
 
 const quitOnDelete = () => process.platform === 'darwin' && config.deleteKey?.macQuit !== false;
@@ -218,7 +218,7 @@ function crashed(what) {
 process.on('uncaughtException', (e) => crashed(e?.stack || e));
 function checkScale() {
   // Nor right after a wake: the displays are still settling, and that's when exit got stuck (10-23, 10-24).
-  if (restarting || Date.now() - STARTED < 30000 || Date.now() - wakeAt < 15000 || overlay.isVisible()) return;
+  if (restarting || Date.now() - STARTED < 30000 || Date.now() - wakeAt < 15000 || trayUp()) return;
   const bad = Object.entries(cubbyWindows()).filter(([, w]) => !sameRect(w.getContentBounds(), w.getBounds()));
   if (!bad.length) return;
   if (Date.now() - lastScaleRestart < 600000) return; // restarted for this recently and it didn't help
@@ -238,14 +238,16 @@ const cursorDisplay = () => screen.getDisplayNearestPoint(screen.getCursorScreen
 function showOverlay({ altSession = false } = {}) {
   foregroundAtOpen = adapter.foreground();
   place(overlay, layout.overlayBounds(cursorDisplay()));
-  // Window lists are most recently used first: the first other window is "previous".
   // "Previous" is the window you were in before, from the activation history (a raised split-screen
   // partner or an always-on-top window you never used doesn't count). Without history, the z-order.
   const wins = adapter.listWindows({ excludePid: process.pid });
   const ok = (h) => h !== foregroundAtOpen && wins.some((w) => w.hwnd === h && !w.minimized);
   const previous = mru.find(ok) || wins.find((w) => ok(w.hwnd))?.hwnd || 0;
   overlay.webContents.send('open', { ...snapshot(), foreground: foregroundAtOpen, previous, altSession });
+  clearTimeout(hideTimer); // reopened while closing: it's still up, just show the new contents
+  hideTimer = null;
   overlay.show();
+  overlay.webContents.send('shown'); // the page starts its opening animation now that it's on screen
   overlay.focus();
   ensureOverlayFocus();
   setTimeout(ensureOverlayFocus, 120); // activation can settle a moment after show()
@@ -254,7 +256,7 @@ function showOverlay({ altSession = false } = {}) {
 // Windows sometimes refuses focus right after the hook swallowed the hotkey: the tray shows but
 // keystrokes (Esc, typing) keep going to the app underneath. Check, and take focus properly.
 function ensureOverlayFocus() {
-  if (!overlay.isVisible()) return;
+  if (!trayUp()) return;
   const self = adapter.handleOf(overlay);
   if (adapter.foreground() === self) return;
   const ok = adapter.forceForeground ? adapter.forceForeground(self) : (app.focus({ steal: true }), true);
@@ -262,18 +264,34 @@ function ensureOverlayFocus() {
   overlay.webContents.focus();
   // Once we are really in front, make Electron agree, or keys (Esc) never reach the page.
   setTimeout(() => {
-    if (!overlay.isVisible() || overlay.isFocused()) return;
+    if (!trayUp() || overlay.isFocused()) return;
     log('focus resync');
     overlay.focus();
     overlay.webContents.focus();
   }, 60);
 }
-const hideOverlay = () => overlay.isVisible() && overlay.hide();
+// A hidden window keeps its last frame and shows it again on the next show(): the tray fully open,
+// which flashed before the opening animation (it looked like opening twice; setOpacity didn't hide it
+// on this transparent window). So the page blanks itself first, and the window hides once that blank
+// frame is drawn ('blanked'), or after 100ms anyway. While closing it counts as closed (trayUp()).
+let hideTimer = null;
+const trayUp = () => overlay.isVisible() && !hideTimer;
+function hideOverlay() {
+  if (!trayUp()) return;
+  overlay.webContents.send('blank');
+  hideTimer = setTimeout(finishHide, 100);
+}
+function finishHide() {
+  if (!hideTimer) return;
+  clearTimeout(hideTimer);
+  hideTimer = null;
+  if (!overlay.isDestroyed()) overlay.hide();
+}
 
 // Esc, the search key again, or a click on the backdrop. Hiding the focused tray leaves Windows'
 // focus on the hidden window (typing goes nowhere), so hand it back to where the tray was opened.
 function dismiss() {
-  if (!overlay.isVisible()) return;
+  if (!trayUp()) return;
   const self = adapter.handleOf(overlay);
   const back = adapter.foreground() === self ? foregroundAtOpen : 0;
   hideOverlay();
@@ -286,22 +304,22 @@ function dismiss() {
 // Pressing search mid-switch (modifier still held) converts the session to search.
 let altSession = false;
 function onHotkey(back = false) {
-  log('hotkey', overlay.isVisible());
-  if (overlay.isVisible()) overlay.webContents.send('cycle', back ? -1 : 1);
+  log('hotkey', trayUp());
+  if (trayUp()) overlay.webContents.send('cycle', back ? -1 : 1);
   else showOverlay({ altSession: true });
   altSession = true;
 }
 
 function onSearchKey() {
-  log('search key', overlay.isVisible());
-  if (overlay.isVisible() && !altSession) return dismiss(); // toggle: search key again closes
+  log('search key', trayUp());
+  if (trayUp() && !altSession) return dismiss(); // toggle: search key again closes
   altSession = false;
-  if (overlay.isVisible()) overlay.webContents.send('search');
+  if (trayUp()) overlay.webContents.send('search');
   else showOverlay();
 }
 
 function onAltUp() {
-  if (altSession && overlay.isVisible()) overlay.webContents.send('alt-up');
+  if (altSession && trayUp()) overlay.webContents.send('alt-up');
   altSession = false;
 }
 
@@ -513,7 +531,7 @@ function setSocialMode(mode) {
   if (mode === 'dnd') {
     const rc = runtime();
     const ids = new Set(pingIds());
-    holdOpen = overlay.isVisible();
+    holdOpen = trayUp();
     for (const w of adapter.listWindows()) if (ids.has(appForWindow(rc, w)?.id)) adapter.minimize(w.hwnd);
     toast.hide();
     if (holdOpen) setTimeout(() => { adapter.focus(adapter.handleOf(overlay)); holdOpen = false; }, 200);
@@ -577,7 +595,7 @@ function layoutPanels(d = panelDisplay()) {
 // display that exists, at that display's size.
 function relayoutAll() {
   layoutPanels();
-  if (overlay.isVisible()) place(overlay, layout.overlayBounds(screen.getDisplayMatching(overlay.getBounds())));
+  if (trayUp()) place(overlay, layout.overlayBounds(screen.getDisplayMatching(overlay.getBounds())));
   if (cue.isVisible()) place(cue, layout.cueBounds(screen.getDisplayMatching(cue.getBounds())));
 }
 
@@ -616,7 +634,7 @@ function edgeTick() {
     const atEdge = p.x >= d.workArea.x + d.workArea.width - 8 && p.x < d.bounds.x + d.bounds.width && p.y >= top && p.y <= bottom;
     const onBar = !tucked && ((dock.isVisible() && layout.contains(dock.getBounds(), p)) || musicHit);
     if (atEdge || onBar) lastNear = Date.now();
-    want = !(altHeld || overlay.isVisible() || Date.now() < peekUntil || Date.now() - lastNear < 700);
+    want = !(altHeld || trayUp() || Date.now() < peekUntil || Date.now() - lastNear < 700);
   }
   if (want === tucked) return;
   tucked = want;
@@ -816,7 +834,7 @@ function refreshAfterWake() {
   if (process.platform !== 'win32') return; // only seen on Windows; on mac it'd flash the cue every unlock
   clearTimeout(wakeTimer);
   wakeTimer = setTimeout(function go() {
-    if (overlay.isVisible()) { wakeTimer = setTimeout(go, 1000); return; }
+    if (trayUp()) { wakeTimer = setTimeout(go, 1000); return; }
     cue.webContents.once('did-finish-load', () => showCue({ mode: 'heard', label: 'Cubby refreshed', sub: 'Ready after sleep' }, 2000));
     repair('reload');
   }, 3000);
@@ -868,6 +886,7 @@ function trayImage() {
   return nativeImage.createFromPath(path.join(__dirname, 'tray-icon.png'));
 }
 
+let checkForUpdates;
 function buildTrayMenu() {
   if (!tray) return;
   const L = (k) => schema.keyLabel(config.keys[k]);
@@ -895,6 +914,7 @@ function buildTrayMenu() {
       { type: 'separator' },
       { label: 'Open log', click: () => shell.openPath(EVENTS) },
     ] },
+    ...(checkForUpdates ? [{ label: `Check for updates (you have ${app.getVersion()})`, click: () => checkForUpdates() }] : []),
     { label: 'Refresh Cubby', click: () => restart('manual') },
     { label: 'Disable Cubby…', click: disableCubby },
     { label: 'Uninstall Cubby…', click: uninstallCubby },
@@ -1042,6 +1062,24 @@ async function smoke() {
 app.whenReady().then(() => {
   loadConfig();
   overlay = makeWindow('overlay.html', {});
+  // Throttled while hidden, the tray dropped 1-2 frames of its opening animation (measured: up to a
+  // 50ms gap in about a third of opens; none without throttling). It's idle while hidden anyway.
+  overlay.webContents.setBackgroundThrottling(false);
+  adapter.noTransitions(overlay);
+  // The first opens after a start still dropped frames (150ms, then 50ms): the window's drawing surface
+  // gets set up on its first show. Show it once now, blank and click-through, so that's done.
+  overlay.webContents.once('did-finish-load', () => {
+    if (trayUp()) return;
+    place(overlay, layout.overlayBounds(cursorDisplay()));
+    overlay.webContents.send('blank');
+    overlay.setIgnoreMouseEvents(true);
+    overlay.showInactive();
+    setTimeout(() => {
+      if (overlay.isDestroyed()) return;
+      overlay.setIgnoreMouseEvents(false);
+      if (!overlay.isFocused()) hideOverlay(); // not if it was opened meanwhile
+    }, 300);
+  });
   dock = makeWindow('dock.html', { focusable: false });
   musicWin = makeWindow('music.html', { focusable: false });
   musicWin.setIgnoreMouseEvents(true, { forward: true }); // click-through except over the card (music-hit)
@@ -1106,6 +1144,7 @@ app.whenReady().then(() => {
 
   ipcMain.on('activate', (_, hwnd) => activate(hwnd));
   ipcMain.on('activate-layout', (_, id) => activateLayout(id));
+  ipcMain.on('blanked', finishHide);
   ipcMain.on('launch', (_, id, l) => { const a = findApp(runtime(), id)?.launch || l; if (a) adapter.launch(a); hideOverlay(); });
   ipcMain.on('context', (_, info) => appContext(info));
   ipcMain.on('side-menu', (_, at) => {
@@ -1131,7 +1170,8 @@ ipcMain.on('voice', (_, on) => setVoice(!!on));
   ipcMain.on('toast-close', () => toast.hide());
 
   setInterval(() => { trackLayouts(adapter.foreground()); push(); followPanels(); keepPanelsOnTop(); checkScale(); }, 1000); // followPanels also catches a window dragged to another display
-  initUpdater(log);
+  checkForUpdates = initUpdater(log);
+  buildTrayMenu();
   const stopBadges = adapter.startBadgeWatcher(onBadges);
   app.on('will-quit', stopBadges);
   musicWin.webContents.once('did-finish-load', () => layoutPanels()); // the 1s push fills whichever loads later

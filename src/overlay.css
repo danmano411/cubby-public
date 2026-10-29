@@ -3,9 +3,13 @@
   position: relative; margin: 0 auto; max-height: 100vh; display: flex; flex-direction: column;
   background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55); overflow: hidden;
-  animation: pop 0.12s ease-out;
+  animation: fade 0.1s ease-out;
+  will-change: opacity; /* its own layer: the animation runs off the main thread, unaffected by render() */
 }
-@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+/* The panel only fades: scaling re-rasterized the text (jitter) and the slide-up read as a bounce. */
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fade { from { opacity: 0; } }
+.still #panel { animation: none; } /* Settings: Animations, off */
 
 header { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }

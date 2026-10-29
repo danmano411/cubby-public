@@ -28,6 +28,7 @@ const go = () => (s.running ? cubby.send('activate', s.windows[0].hwnd) : cubby.
 document.getElementById('info').onclick = go;
 
 cubby.on('model', (m) => {
+  document.body.classList.toggle('still', m.animate === false); // Settings: Animations, off
   s = m.music;
   if (!s) return; // provider 'none': main hides this window
   document.body.classList.toggle('playing', !!s.nowPlaying);

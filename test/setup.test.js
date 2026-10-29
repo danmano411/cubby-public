@@ -159,8 +159,8 @@ test('mergeDraft copies deleteKey booleans only', () => {
 
 test('mergeDraft copies switcher settings, valid values only', () => {
   const cur = schema.load(JSON.stringify(schema.DEFAULTS)).config;
-  assert.deepStrictEqual(mergeDraft(cur, { switcher: { tabOrder: 'recent', raiseSnapPartners: true } }).switcher, { tabOrder: 'recent', raiseSnapPartners: true });
-  assert.deepStrictEqual(mergeDraft(cur, { switcher: { tabOrder: 'mru', raiseSnapPartners: 1 } }).switcher, { tabOrder: 'layout', raiseSnapPartners: true });
+  assert.deepStrictEqual(mergeDraft(cur, { switcher: { tabOrder: 'recent', raiseSnapPartners: true, animate: false } }).switcher, { tabOrder: 'recent', raiseSnapPartners: true, animate: false });
+  assert.deepStrictEqual(mergeDraft(cur, { switcher: { tabOrder: 'mru', raiseSnapPartners: 1, animate: 'no' } }).switcher, { tabOrder: 'layout', raiseSnapPartners: true, animate: true });
 });
 
 test('mergeDraft + validate catch a duplicate key and a repeated app', () => {

@@ -115,6 +115,7 @@ On macOS `Cmd+Tab` cannot be fully taken over by an app, so the default is `Opti
 
 On Windows, Cubby 0.1.7 and later updates itself (older versions need one manual download): it checks for a new release when it starts and every few hours,
 downloads it in the background, and asks whether to restart now or install the next time it quits.
+To check right away, right-click the tray icon and choose **Check for updates** (it also shows your version).
 On macOS it cannot (updating an unsigned app is blocked by macOS), so download the new `.dmg` from the
 [Releases page](https://github.com/danmano411/cubby-public/releases) when one comes out.
 

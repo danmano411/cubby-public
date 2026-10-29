@@ -396,6 +396,7 @@ document.getElementById('side').onclick = (e) => {
   cubby.send('side-menu', { x: Math.round(r.left), y: Math.round(r.bottom + 4) });
 };
 
+const $panel = document.getElementById('panel');
 cubby.on('open', (m) => {
   disarm();
   clearTimeout(armTimer);
@@ -409,9 +410,11 @@ cubby.on('open', (m) => {
   lastXY = null;
   sel = `w:${foreground}`; // start on "you are here"
   setHints(m.altSession);
-  document.getElementById('panel').style.animation = 'none';
-  void document.getElementById('panel').offsetWidth;
-  document.getElementById('panel').style.animation = '';
+  // Held invisible until the window is on screen ('shown'), so the whole animation is seen.
+  document.body.classList.toggle('still', m.animate === false);
+  opening = true;
+  $panel.style.animation = 'none';
+  $panel.style.opacity = '0';
   render();
   // Opened with Alt held: pre-select the previous app so a quick Alt+Tab tap goes back, like Windows.
   // More Tabs continue in group order from there. No known previous app -> next open app.
@@ -420,6 +423,33 @@ cubby.on('open', (m) => {
     else cycle(1);
   }
   $filter.focus();
+});
+let shownAt = 0, openTimer;
+function opened() {
+  clearTimeout(openTimer);
+  if (!opening) return;
+  opening = false;
+  releaseRender();
+}
+$panel.addEventListener('animationend', (e) => { if (e.target === $panel) opened(); });
+cubby.on('shown', () => {
+  const at = ++shownAt;
+  requestAnimationFrame(() => {
+    if (at !== shownAt) return;
+    $panel.style.opacity = '';
+    $panel.style.animation = '';
+    clearTimeout(openTimer);
+    if (document.body.classList.contains('still')) return opened();
+    openTimer = setTimeout(opened, 300); // in case animationend never comes
+  });
+});
+// main is about to hide the window: blank it first, so the next open doesn't flash this frame.
+cubby.on('blank', () => {
+  ++shownAt;
+  opened();
+  $panel.style.animation = 'none';
+  $panel.style.opacity = '0';
+  requestAnimationFrame(() => requestAnimationFrame(() => cubby.send('blanked')));
 });
 // Alt released during an Alt+Tab session: switch to the highlighted app.
 cubby.on('alt-up', goSelected);
@@ -462,7 +492,10 @@ let renaming = null;      // { input }: a group name or app nicknames field is o
 let pendingRender = false;
 let suppressClick = false;
 
-const rendersHeld = () => !!(drag?.active || naming || renaming);
+// opening: no rebuilds during the opening animation. Main pushes a model every second and on focus
+// changes (showing the tray is one), and a rebuild mid-animation re-draws the whole panel: a dropped frame.
+let opening = false;
+const rendersHeld = () => !!(opening || drag?.active || naming || renaming);
 function releaseRender() {
   if (rendersHeld() || !pendingRender) return;
   pendingRender = false;

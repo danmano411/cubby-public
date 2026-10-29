@@ -147,6 +147,7 @@ function mergeDraft(current, draft) {
   for (const k of ['confirm', 'macQuit']) if (typeof d.deleteKey?.[k] === 'boolean') next.deleteKey = { ...next.deleteKey, [k]: d.deleteKey[k] };
   if (['layout', 'recent'].includes(d.switcher?.tabOrder)) next.switcher = { ...next.switcher, tabOrder: d.switcher.tabOrder };
   if (typeof d.switcher?.raiseSnapPartners === 'boolean') next.switcher = { ...next.switcher, raiseSnapPartners: d.switcher.raiseSnapPartners };
+  if (typeof d.switcher?.animate === 'boolean') next.switcher = { ...next.switcher, animate: d.switcher.animate };
   const k = d.calendar;
   if (isObj(k)) {
     if (Array.isArray(k.urls)) next.calendar.urls = k.urls.map((u) => String(u).trim()).filter(Boolean);
